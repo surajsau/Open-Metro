@@ -7,8 +7,10 @@ import './styles.css';
 
 // Dev affordances for headless/manual testing.
 const params = new URLSearchParams(location.search);
+const city = params.get('city');
+if (city) store.startCity(city);
 const seed = Number(params.get('seed') ?? 0);
-if (seed > 0) store.restart(seed); // restart marks the game started
+if (seed > 0) store.restart(seed); // restart marks the game started, keeps city
 else if (params.has('autostart') || params.has('demo')) store.start();
 if (params.has('demo')) {
   // Connect the four starter stations so a train is visible immediately.

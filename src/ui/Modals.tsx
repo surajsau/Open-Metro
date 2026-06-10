@@ -1,6 +1,7 @@
+import { CITIES } from '../game/cities';
 import type { Snapshot } from '../store';
-import { store } from '../store';
-import { LocomotiveIcon, REWARD_LABELS, rewardIcon } from './Icons';
+import { bestScoreFor, store } from '../store';
+import { LocomotiveIcon, NewLineIcon, REWARD_LABELS, rewardIcon } from './Icons';
 
 export function RewardModal({ snap }: { snap: Snapshot }) {
   const reward = snap.pendingReward;
@@ -13,6 +14,12 @@ export function RewardModal({ snap }: { snap: Snapshot }) {
           <LocomotiveIcon size={30} />
           <span>+1 locomotive added</span>
         </div>
+        {reward.unlockedLine && (
+          <div className="reward-loco unlocked">
+            <NewLineIcon size={24} />
+            <span>New line unlocked!</span>
+          </div>
+        )}
         <p className="reward-hint">Choose one upgrade:</p>
         <div className="reward-options">
           {reward.options.map((kind) => (
@@ -37,9 +44,19 @@ export function GameOverOverlay({ snap }: { snap: Snapshot }) {
         <p className="final-sub">
           passengers carried · {snap.week - 1} {snap.week - 1 === 1 ? 'week' : 'weeks'} survived
         </p>
-        <button className="primary" onClick={() => store.restart()}>
-          Play again
-        </button>
+        {snap.best > 0 && (
+          <p className="final-best">
+            best in {snap.cityName}: {snap.best}
+          </p>
+        )}
+        <div className="button-row">
+          <button className="primary" onClick={() => store.restart()}>
+            Play again
+          </button>
+          <button className="secondary" onClick={() => store.toMenu()}>
+            Change city
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -56,13 +73,28 @@ export function StartScreen() {
         <ul className="howto">
           <li>Drag between stations to draw metro lines.</li>
           <li>Passengers are shapes — take them to a matching station.</li>
-          <li>Crossing the river costs a tunnel.</li>
+          <li>Crossing water costs a tunnel.</li>
           <li>Don't let any station stay overcrowded.</li>
-          <li>Each week brings a new locomotive and an upgrade.</li>
+          <li>Each week brings a locomotive, an upgrade — and every other week a new line.</li>
         </ul>
-        <button className="primary" onClick={() => store.start()}>
-          Play
-        </button>
+        <div className="city-grid">
+          {CITIES.map((city) => {
+            const best = bestScoreFor(city.id);
+            return (
+              <button key={city.id} className="city-card" onClick={() => store.startCity(city.id)}>
+                <span className="city-top">
+                  <span className="city-name">{city.name}</span>
+                  <span className="city-dots" title={`difficulty ${city.difficulty}/3`}>
+                    {'●'.repeat(city.difficulty)}
+                    {'○'.repeat(3 - city.difficulty)}
+                  </span>
+                </span>
+                <span className="city-blurb">{city.blurb}</span>
+                {best > 0 && <span className="city-best">best {best}</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

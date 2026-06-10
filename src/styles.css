@@ -276,6 +276,96 @@ body {
   color: #55534b;
 }
 
+/* City select */
+
+.city-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.city-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 13px 18px;
+  background: #fff;
+  border: 2.5px solid #e3e1d8;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  transition:
+    border-color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.city-card:hover {
+  border-color: #35342f;
+  transform: translateY(-1px);
+}
+
+.city-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.city-name {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.city-dots {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #b3491f;
+}
+
+.city-blurb {
+  font-size: 13px;
+  color: #6f6d64;
+}
+
+.city-best {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #00843d;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.secondary {
+  margin-top: 22px;
+  padding: 12px 28px;
+  border: 2px solid #35342f;
+  border-radius: 999px;
+  background: #fff;
+  color: #35342f;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.final-best {
+  margin-top: 8px;
+  font-weight: 700;
+  color: #00843d;
+}
+
+.reward-loco.unlocked {
+  color: #00843d;
+}
+
 /* Reward modal */
 
 .reward-loco {

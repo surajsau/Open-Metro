@@ -1,3 +1,4 @@
+import { CITIES, cityById } from './game/cities';
 import { DAY_NAMES } from './game/constants';
 import { applyChain, applyInterchange, createLine, deleteLine, insertStation } from './game/lines';
 import { applyReward } from './game/rewards';
@@ -7,7 +8,7 @@ import { createGameState, dayFracOf, dayOf } from './game/state';
 import { stepGame } from './game/sim';
 import { tunnelsUsed } from './game/lines';
 import { addCarriageToLine, addTrainToLine } from './game/trains';
-import type { EditResult, GameState, RewardKind, Speed, Toast, Vec } from './game/types';
+import type { City, EditResult, GameState, RewardKind, Speed, Toast, Vec } from './game/types';
 
 export interface Snapshot {
   started: boolean;
@@ -27,25 +28,50 @@ export interface Snapshot {
   interchanges: number;
   pendingReward: GameState['pendingReward'];
   toasts: Toast[];
+  cityId: string;
+  cityName: string;
+  best: number;
 }
 
 const TOAST_LIFETIME_MS = 2600;
+
+// Best scores persist per city; storage may be absent in tests.
+export function bestScoreFor(cityId: string): number {
+  try {
+    if (typeof localStorage === 'undefined') return 0;
+    return Number(localStorage.getItem(`mm-best-${cityId}`) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function recordBestScore(cityId: string, score: number): void {
+  try {
+    if (typeof localStorage !== 'undefined' && score > bestScoreFor(cityId)) {
+      localStorage.setItem(`mm-best-${cityId}`, String(score));
+    }
+  } catch {
+    // Private mode etc. — best score is a nicety, never an error.
+  }
+}
 
 export class GameStore {
   state: GameState;
   private listeners = new Set<() => void>();
   private snapshot: Snapshot;
   private lastTs: number | null = null;
+  private bestRecorded = false;
 
   constructor(seed?: number) {
-    this.state = this.freshState(seed);
+    this.state = this.freshState(seed, CITIES[0]);
     this.snapshot = this.buildSnapshot();
   }
 
-  private freshState(seed?: number): GameState {
-    const state = createGameState(seed);
+  private freshState(seed: number | undefined, city: City): GameState {
+    const state = createGameState(seed, city);
     initialStations(state);
     recomputeRouting(state);
+    this.bestRecorded = false;
     return state;
   }
 
@@ -79,6 +105,9 @@ export class GameStore {
       interchanges: s.inventory.interchanges,
       pendingReward: s.pendingReward,
       toasts: s.toasts,
+      cityId: s.city.id,
+      cityName: s.city.name,
+      best: bestScoreFor(s.city.id),
     };
   }
 
@@ -102,7 +131,9 @@ export class GameStore {
       prev.tunnelsFree !== next.tunnelsFree ||
       prev.interchanges !== next.interchanges ||
       prev.pendingReward !== next.pendingReward ||
-      prev.toasts !== next.toasts;
+      prev.toasts !== next.toasts ||
+      prev.cityId !== next.cityId ||
+      prev.best !== next.best;
     if (changed) {
       this.snapshot = next;
       for (const l of this.listeners) l();
@@ -116,6 +147,10 @@ export class GameStore {
     this.lastTs = ts;
     if (this.state.started) {
       stepGame(this.state, dtReal * this.state.speed);
+    }
+    if (this.state.gameOver && !this.bestRecorded) {
+      this.bestRecorded = true;
+      recordBestScore(this.state.city.id, this.state.score);
     }
     this.pruneToasts();
     this.notify();
@@ -136,8 +171,21 @@ export class GameStore {
   }
 
   restart(seed?: number): void {
-    this.state = this.freshState(seed);
+    this.state = this.freshState(seed, this.state.city);
     this.state.started = true;
+    this.lastTs = null;
+    this.notify();
+  }
+
+  startCity(cityId: string): void {
+    this.state = this.freshState(undefined, cityById(cityId));
+    this.state.started = true;
+    this.lastTs = null;
+    this.notify();
+  }
+
+  toMenu(): void {
+    this.state = this.freshState(undefined, this.state.city);
     this.lastTs = null;
     this.notify();
   }
