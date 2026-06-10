@@ -21,9 +21,9 @@ export const CITIES: City[] = [
         { x: 1700, y: 560 },
       ],
     ],
-    startTunnels: 3,
-    pace: { station: 1.05, passenger: 1.1 },
-    rampPerDay: 0.98,
+    startTunnels: 4,
+    pace: { station: 1.15, passenger: 1.15 },
+    rampPerDay: 0.985,
   },
   {
     id: 'mumbai',
@@ -44,9 +44,9 @@ export const CITIES: City[] = [
         { x: 930, y: 545 },
       ],
     ],
-    startTunnels: 2,
-    pace: { station: 0.95, passenger: 0.92 },
-    rampPerDay: 0.975,
+    startTunnels: 3,
+    pace: { station: 1.0, passenger: 0.98 },
+    rampPerDay: 0.978,
   },
   {
     id: 'tokyo',
@@ -67,9 +67,9 @@ export const CITIES: City[] = [
         { x: 1700, y: 725 },
       ],
     ],
-    startTunnels: 2,
-    pace: { station: 0.9, passenger: 0.82 },
-    rampPerDay: 0.972,
+    startTunnels: 3,
+    pace: { station: 0.95, passenger: 0.9 },
+    rampPerDay: 0.975,
   },
 ];
 

@@ -14,13 +14,13 @@ export const EXCHANGE_TIME = 0.35; // s per passenger (halved at interchanges)
 
 export const STATION_CAP = 6;
 export const INTERCHANGE_CAP = 12;
-export const GAUGE_FILL_TIME = 45; // s over capacity until game over
-export const GAUGE_DRAIN_TIME = 30; // s to fully recover
+export const GAUGE_FILL_TIME = 55; // s over capacity until game over
+export const GAUGE_DRAIN_TIME = 22; // s to fully recover
 
 export const MAX_LINES = 7;
 export const START_LINE_SLOTS = 3;
-export const START_LOCOMOTIVES = 3;
-export const START_TUNNELS = 3;
+export const FREE_LINE_UNLOCK_UNTIL = 5; // weekly auto-unlock up to here, then biweekly
+export const START_LOCOMOTIVES = 4; // one spare beyond the starting lines
 
 export const STATION_LIMIT = 38;
 export const MIN_STATION_DIST = 70;
@@ -59,15 +59,15 @@ export const RARE_STATION_CHANCE = 0.12;
 export const RARE_UNLOCK_DAY = 4;
 export const MAX_RARE_PER_SHAPE = 2;
 
-export const STATION_SPAWN_FIRST = 10; // s until first spawned station
+export const STATION_SPAWN_FIRST = 14; // s until first spawned station
 export const PASSENGER_FIRST_DELAY: [number, number] = [6, 14];
 
 export function stationSpawnInterval(rng: () => number, day: number, pace = 1, ramp = 0.97): number {
-  return (18 + rng() * 12) * pace * Math.max(0.6, Math.pow(ramp, day));
+  return (24 + rng() * 14) * pace * Math.max(0.6, Math.pow(ramp, day));
 }
 
 export function passengerSpawnInterval(rng: () => number, day: number, pace = 1, ramp = 0.975, pressure = 1): number {
-  return (8 + rng() * 8) * pace * Math.max(0.45, Math.pow(ramp, day)) * pressure;
+  return (9 + rng() * 8) * pace * Math.max(0.45, Math.pow(ramp, day)) * pressure;
 }
 
 // Station placement ellipse grows from the center over the first weeks.

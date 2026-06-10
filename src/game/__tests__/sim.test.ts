@@ -61,7 +61,7 @@ describe('stepGame integration', () => {
     stepGame(state, 0.2);
     expect(state.pendingReward).not.toBeNull();
     expect(state.pendingReward!.week).toBe(1);
-    expect(state.inventory.locomotives).toBe(4); // 3 starting + 1 weekly
+    expect(state.inventory.locomotives).toBe(5); // 4 starting + 1 weekly
     const frozenAt = state.time;
     stepGame(state, 10);
     expect(state.time).toBe(frozenAt); // sim gated while the modal is open

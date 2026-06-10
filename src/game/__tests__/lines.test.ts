@@ -26,7 +26,7 @@ describe('createLine', () => {
     const res = createLine(state, [1, 4]);
     expect(res.ok).toBe(true);
     expect(state.lines).toHaveLength(1);
-    expect(state.inventory.locomotives).toBe(2);
+    expect(state.inventory.locomotives).toBe(3); // 4 starting − 1 deployed
     expect(state.trains).toHaveLength(1);
     expect(state.trains[0].lineId).toBe(state.lines[0].id);
     expect(state.lines[0].path.length).toBeGreaterThanOrEqual(2);
@@ -86,7 +86,7 @@ describe('applyChain', () => {
     expect(applyChain(state, lineId, [1], false).ok).toBe(true);
     expect(state.lines).toHaveLength(0);
     expect(state.trains).toHaveLength(0);
-    expect(state.inventory.locomotives).toBe(3);
+    expect(state.inventory.locomotives).toBe(4); // full refund of the starting stock
     expect(state.inventory.carriages).toBe(2);
   });
 

@@ -16,16 +16,30 @@ describe('weekly line cadence', () => {
     return state;
   }
 
-  it('does not auto-unlock a line on odd weeks', () => {
+  it('auto-unlocks a line every week while below five slots', () => {
     const state = runToDay(7);
-    expect(state.pendingReward?.unlockedLine).toBe(false);
-    expect(state.lineSlots).toBe(3);
-  });
-
-  it('auto-unlocks a line slot on even weeks', () => {
-    const state = runToDay(14);
     expect(state.pendingReward?.unlockedLine).toBe(true);
     expect(state.lineSlots).toBe(4);
+  });
+
+  it('slows to even weeks only once five slots are reached', () => {
+    const odd = createGameState(68);
+    odd.stations.push(makeStation(1, 200, 200, 'circle'), makeStation(2, 400, 200, 'triangle'));
+    odd.nextStationIn = 999999;
+    odd.lineSlots = 5;
+    odd.time = 21 * DAY_SECONDS - 0.1; // week 3
+    stepGame(odd, 0.2);
+    expect(odd.pendingReward?.unlockedLine).toBe(false);
+    expect(odd.lineSlots).toBe(5);
+
+    const even = createGameState(69);
+    even.stations.push(makeStation(1, 200, 200, 'circle'), makeStation(2, 400, 200, 'triangle'));
+    even.nextStationIn = 999999;
+    even.lineSlots = 5;
+    even.time = 14 * DAY_SECONDS - 0.1; // week 2
+    stepGame(even, 0.2);
+    expect(even.pendingReward?.unlockedLine).toBe(true);
+    expect(even.lineSlots).toBe(6);
   });
 
   it('stops auto-unlocking at the line cap', () => {

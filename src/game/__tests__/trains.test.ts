@@ -139,7 +139,7 @@ describe('inventory deployment', () => {
     const t = state.trains[1];
     expect(t.s).toBeCloseTo(300, 4);
     expect(t.dir).toBe(-1);
-    expect(state.inventory.locomotives).toBe(1);
+    expect(state.inventory.locomotives).toBe(2); // 4 starting − line auto-deploy − this drop
   });
 
   it('fails without locomotive stock', () => {

@@ -30,7 +30,7 @@ describe('applyReward', () => {
     expect(state.pendingReward).toBeNull();
 
     applyReward(state, 'tunnels');
-    expect(state.inventory.tunnels).toBe(5);
+    expect(state.inventory.tunnels).toBe(6); // London's 4 starting + 2
 
     applyReward(state, 'carriage');
     expect(state.inventory.carriages).toBe(1);

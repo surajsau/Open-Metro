@@ -1,4 +1,5 @@
 import {
+  FREE_LINE_UNLOCK_UNTIL,
   GAUGE_DRAIN_TIME,
   GAUGE_FILL_TIME,
   INTERCHANGE_CAP,
@@ -27,7 +28,7 @@ export function pressureFactor(state: GameState): number {
     load += Math.min(1.5, st.waiting.length / capacityOf(st));
   }
   load /= state.stations.length;
-  return Math.min(1.6, Math.max(0.75, 0.75 + load * 0.9));
+  return Math.min(1.75, Math.max(0.75, 0.75 + load * 0.9));
 }
 
 // dt arrives pre-scaled by game speed. The sim freezes (without losing the
@@ -43,8 +44,10 @@ export function stepGame(state: GameState, dt: number): void {
     state.lastRewardDay = day;
     const week = day / 7;
     state.inventory.locomotives++; // weekly locomotive is always granted
-    // Even weeks grow the network for free so lines keep up with the city.
-    const unlockedLine = week % 2 === 0 && state.lineSlots < MAX_LINES;
+    // Lines grow for free weekly until five slots, then every other week,
+    // so the network keeps up with the city without depending on reward luck.
+    const unlockedLine =
+      state.lineSlots < MAX_LINES && (state.lineSlots < FREE_LINE_UNLOCK_UNTIL || week % 2 === 0);
     if (unlockedLine) state.lineSlots++;
     state.pendingReward = { week, options: generateRewardOptions(state), unlockedLine };
   }
