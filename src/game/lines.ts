@@ -142,6 +142,16 @@ export function insertStation(state: GameState, lineId: number, legIndex: number
   return applyChain(state, lineId, chain, line.isLoop);
 }
 
+export function applyInterchange(state: GameState, stationId: number): EditResult {
+  if (state.inventory.interchanges <= 0) return { ok: false, reason: 'No interchanges available' };
+  const station = stationById(state, stationId);
+  if (!station) return { ok: false, reason: 'Unknown station' };
+  if (station.isInterchange) return { ok: false, reason: 'Already an interchange' };
+  state.inventory.interchanges--;
+  station.isInterchange = true;
+  return { ok: true };
+}
+
 export function deleteLine(state: GameState, lineId: number): void {
   const line = lineById(state, lineId);
   if (!line) return;
