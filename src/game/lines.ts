@@ -94,7 +94,7 @@ export function makeTrain(state: GameState, line: Line): Train {
   return train;
 }
 
-function freePaletteId(state: GameState): number {
+export function freePaletteId(state: GameState): number {
   for (let id = 0; id < MAX_LINES; id++) {
     if (!state.lines.some((l) => l.id === id)) return id;
   }
