@@ -293,14 +293,20 @@ function drawTrains(ctx: CanvasRenderingContext2D, state: GameState): void {
     const color = LINE_COLORS[line.id];
     const riders = train.passengers.map((p) => p.shape);
     const units = 1 + train.carriages;
+    const LOCO_LEN = 32;
+    const CAR_LEN = 26;
+    const COUPLING = 3;
+    let back = 0; // arc-length from the locomotive's center to this unit's center
     for (let u = 0; u < units; u++) {
-      let s = train.s - train.dir * u * 36;
+      if (u === 1) back += (LOCO_LEN + CAR_LEN) / 2 + COUPLING;
+      else if (u > 1) back += CAR_LEN + COUPLING;
+      let s = train.s - train.dir * back;
       if (line.isLoop) s = ((s % total) + total) % total;
       else s = Math.max(0, Math.min(total, s));
       const { point, angle } = pointAtArcLength(line.path, s);
       const unitRiders = riders.slice(u * 6, u * 6 + 6);
-      if (u === 0) drawTrainBody(ctx, point, angle, 32, 16, color, unitRiders);
-      else drawTrainBody(ctx, point, angle, 26, 13, color, unitRiders);
+      if (u === 0) drawTrainBody(ctx, point, angle, LOCO_LEN, 16, color, unitRiders);
+      else drawTrainBody(ctx, point, angle, CAR_LEN, 13, color, unitRiders);
     }
   }
 }
