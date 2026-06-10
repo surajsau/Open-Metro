@@ -29,7 +29,7 @@ params), and `src/ui/` (React HUD and modals, all icons inline SVG).
 |----|-------------|
 | UI-05 | Lifecycle actions: `start()` (begin current city), `startCity(id, mode)`, `restart(seed?)` (same city + mode, fresh map), `toMenu()` (back to start screen, mode resets to normal), `endRun()` (manual game over — Endless's exit). Every path that ends a run records the best score first. |
 | UI-06 | **Endless mode** is chosen by a toggle on the start screen and carried in `state.mode`: overcrowding never ends the run ([ENG-17](02-game-engine.md#overcrowding--game-over)); the HUD shows an "∞ endless" badge with an **End run** button; the game-over panel reads "Run complete" instead of "Your metro closed". |
-| UI-07 | **Persistence:** best score per city in `localStorage` under `mm-best-<cityId>`, written once per run at any end (game over, End run, restart, change city), read defensively (missing storage/private mode ⇒ 0, never an error). No other state persists. |
+| UI-07 | **Persistence:** best score per city in `localStorage` under `mm-best-<cityId>`, written once per run at any end (game over, End run, restart, change city), read defensively (missing storage/private mode ⇒ 0, never an error). The key carries no mode: Normal and Endless runs share one per-city best. No other state persists. |
 
 ## Screens & HUD
 

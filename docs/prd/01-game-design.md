@@ -111,7 +111,7 @@ to keep every station below its overcrowding limit. Score = passengers delivered
 | ID | Rule |
 |----|------|
 | GD-39 | Score = passengers delivered to a matching station. Nothing else scores. |
-| GD-40 | The best score per city persists across sessions (localStorage) and shows on the city cards and the game-over screen. Any way a run ends — overcrowding, End run, restarting, or leaving to the menu — counts toward best. |
+| GD-40 | The best score per city persists across sessions (localStorage) and shows on the city cards and the game-over screen. Any way a run ends — overcrowding, End run, restarting, or leaving to the menu — counts toward best. Normal and Endless runs compete on the same per-city best. |
 | GD-41 | Game over offers **Play again** (same city and mode, fresh map) and **Change city** (back to the start screen). |
 
 ## Controls summary
