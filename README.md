@@ -129,6 +129,14 @@ Game core is fully tested. Canvas and UI are verified by running the app and tak
   "http://localhost:5173/?demo&seed=1&ff=60"
 ```
 
+## 📚 Documentation
+
+Product requirements live in [`docs/prd/`](docs/prd/README.md) — an as-built PRD per component
+(game design, engine, world generation, network editing, transit simulation, rendering,
+interaction, UI shell, engineering standards) with stable requirement IDs (`GD-12`, `ENG-04`, …)
+that wiki pages and issues can cite. The original design spec and implementation plan are
+preserved locally in `docs/superpowers/` (kept out of the published repo).
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please ensure:

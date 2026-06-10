@@ -29,4 +29,4 @@ Headless screenshot trick used for visual checks:
 
 - Game-core changes are test-first (vitest, `src/**/__tests__/`). Canvas/UI verified by running + headless screenshots — do not add DOM/canvas mocking deps.
 - World space is fixed 1600×1000, letterboxed; all game coords are world units.
-- Design spec + implementation plan live in `docs/superpowers/`.
+- PRDs (spec of record, one per component, requirement IDs like `GD-12`) live in `docs/prd/` — update the matching PRD when changing behavior. The original design spec + implementation plan live in `docs/superpowers/` (historical, not retro-edited, gitignored — local only).
