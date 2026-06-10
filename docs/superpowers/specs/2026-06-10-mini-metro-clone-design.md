@@ -98,4 +98,12 @@ Start screen → playing → (reward modals weekly) → game over overlay (score
 - **Rendering/UI/input:** verified by running the app (plus a headless-Chrome screenshot if available). Canvas pixel output is intentionally not unit-tested — documented deviation from strict TDD, as it would require heavy native dependencies for negligible signal.
 
 ## Out of scope (v1)
-Audio, multiple cities/maps, Endless/Extreme/daily modes, mobile touch ergonomics, removing mid-line stations, moving deployed trains between lines, save/load, leaderboards/achievements.
+Audio, Endless/Extreme/daily modes, mobile touch ergonomics, removing mid-line stations, moving deployed trains between lines, save/load, leaderboards/achievements.
+
+## Phase 2 addendum (same day, per user feedback)
+
+- **Cities:** three original maps in `src/game/cities.ts` — London (1 river, easy), Mumbai (coast + harbour inlet, medium), Tokyo (2 rivers, hard). Each sets water polylines, starting tunnels, pace multipliers, and daily ramp. Water became multi-polyline throughout (`rivers: Vec[][]`).
+- **Line growth:** a line slot now unlocks automatically at the end of every even week (cap 7), announced in the reward modal; 'New line' stays in the reward pool at reduced weight as an accelerator.
+- **Adaptive difficulty ("intelligent engine"):** `pressureFactor(state)` stretches passenger spawn intervals up to 1.6× when stations are drowning and tightens to 0.75× when the network is cruising. Station shapes are demand-aware — overrepresented shapes get damped weights.
+- **Best scores:** per-city best persisted to localStorage; shown on the city cards and the game-over screen, which also gained a "Change city" button.
+- Dev/test URL params: `?autostart`, `?demo`, `?seed=N`, `?ff=seconds`, `?city=id`.
