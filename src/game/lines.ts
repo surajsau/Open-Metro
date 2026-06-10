@@ -77,7 +77,7 @@ export function remapTrainsToPath(state: GameState, line: Line, oldPath: Vec[]):
   }
 }
 
-function makeTrain(state: GameState, line: Line): Train {
+export function makeTrain(state: GameState, line: Line): Train {
   const train: Train = {
     id: state.idCounter++,
     lineId: line.id,
