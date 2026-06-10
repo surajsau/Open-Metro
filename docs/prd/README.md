@@ -61,6 +61,13 @@ a stable API: prefer adding new headings over renaming existing ones.
 Links **between PRDs** (inside this directory) are relative (`[Game Engine](02-game-engine.md)`)
 so they work in repo browsing, IDE previews, and clones.
 
+These pages are also mirrored to the [project wiki](https://github.com/surajsau/Open-Metro/wiki)
+automatically: on every push to `main` touching `docs/prd/`,
+[`wiki-sync.yml`](https://github.com/surajsau/Open-Metro/blob/main/.github/workflows/wiki-sync.yml)
+regenerates the wiki from this directory via
+[`scripts/sync-wiki.mjs`](https://github.com/surajsau/Open-Metro/blob/main/scripts/sync-wiki.mjs).
+Edits made directly in the wiki are overwritten on the next sync.
+
 ## Status board
 
 | Document | Status |
