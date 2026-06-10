@@ -211,6 +211,25 @@ function drawDragPreview(
     strokePolyline(ctx, octilinearPath(a.pos, mid));
     strokePolyline(ctx, octilinearPath(mid, b.pos));
     ctx.restore();
+  } else if (drag.mode === 'removeStation') {
+    const line = state.lines.find((l) => l.id === drag.lineId);
+    if (!line) return;
+    const idx = line.stations.indexOf(drag.stationId);
+    if (idx === -1) return;
+    const n = line.stations.length;
+    // Healing leg joins the removed station's neighbours; loops wrap around.
+    const prevId = idx > 0 ? line.stations[idx - 1] : line.isLoop ? line.stations[n - 1] : null;
+    const nextId = idx < n - 1 ? line.stations[idx + 1] : line.isLoop ? line.stations[0] : null;
+    const prev = prevId !== null ? stations.get(prevId) : null;
+    const next = nextId !== null ? stations.get(nextId) : null;
+    if (!prev || !next) return;
+    ctx.save();
+    ctx.setLineDash([13, 9]);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = drag.valid ? LINE_COLORS[drag.lineId] : INVALID_COLOR;
+    ctx.lineWidth = LINE_WIDTH;
+    strokePolyline(ctx, octilinearPath(prev.pos, next.pos));
+    ctx.restore();
   } else if (drag.mode === 'inventory') {
     drawInventoryGhost(ctx, drag);
   }

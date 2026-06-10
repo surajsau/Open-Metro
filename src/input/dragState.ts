@@ -16,4 +16,5 @@ export type DragState =
       valid: boolean;
     }
   | { mode: 'insert'; lineId: number; legIndex: number; hoverStation: number | null; cursor: Vec; valid: boolean }
+  | { mode: 'removeStation'; lineId: number; stationId: number; cursor: Vec; valid: boolean }
   | { mode: 'inventory'; item: InventoryItem; cursor: Vec; target: DropTarget };

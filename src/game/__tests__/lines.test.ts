@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { polylineLength } from '../geometry';
-import { applyChain, createLine, deleteLine, insertStation, tunnelsUsed } from '../lines';
+import { applyChain, createLine, deleteLine, insertStation, removeStation, tunnelsUsed } from '../lines';
 import { createGameState } from '../state';
 import type { GameState } from '../types';
 import { makeStation } from './helpers';
@@ -125,6 +125,57 @@ describe('insertStation', () => {
     const state = stateWithStations();
     expect(createLine(state, [1, 4, 3]).ok).toBe(true);
     expect(insertStation(state, state.lines[0].id, 0, 3).ok).toBe(false);
+  });
+});
+
+describe('removeStation', () => {
+  it('drops a middle station and re-paths the healing leg', () => {
+    const state = stateWithStations();
+    expect(createLine(state, [1, 4, 3]).ok).toBe(true); // all north, no crossings
+    const lineId = state.lines[0].id;
+    expect(removeStation(state, lineId, 4).ok).toBe(true);
+    expect(state.lines[0].stations).toEqual([1, 3]);
+    expect(state.lines[0].nodeS).toHaveLength(2);
+  });
+
+  it('auto-breaks a three-station loop into a two-station open line', () => {
+    const state = stateWithStations();
+    expect(createLine(state, [1, 4, 3], true).ok).toBe(true); // closed loop, all north
+    const lineId = state.lines[0].id;
+    expect(state.lines[0].isLoop).toBe(true);
+    expect(removeStation(state, lineId, 4).ok).toBe(true);
+    expect(state.lines[0].stations).toEqual([1, 3]);
+    expect(state.lines[0].isLoop).toBe(false);
+  });
+
+  it('deletes the line and refunds hardware when it would leave one station', () => {
+    const state = stateWithStations();
+    expect(createLine(state, [1, 4]).ok).toBe(true);
+    const lineId = state.lines[0].id;
+    state.trains[0].carriages = 1;
+    expect(removeStation(state, lineId, 1).ok).toBe(true);
+    expect(state.lines).toHaveLength(0);
+    expect(state.trains).toHaveLength(0);
+    expect(state.inventory.locomotives).toBe(4); // full refund of the starting stock
+    expect(state.inventory.carriages).toBe(1);
+  });
+
+  it('rejects a station that is not on the line', () => {
+    const state = stateWithStations();
+    expect(createLine(state, [1, 4]).ok).toBe(true);
+    const lineId = state.lines[0].id;
+    expect(removeStation(state, lineId, 3).ok).toBe(false);
+    expect(state.lines[0].stations).toEqual([1, 4]);
+  });
+
+  it('frees the tunnels the removed station required', () => {
+    const state = stateWithStations();
+    state.inventory.tunnels = 2;
+    expect(createLine(state, [1, 2, 3]).ok).toBe(true); // 1→2 and 2→3 each cross once
+    expect(tunnelsUsed(state)).toBe(2);
+    expect(removeStation(state, state.lines[0].id, 2).ok).toBe(true);
+    expect(state.lines[0].stations).toEqual([1, 3]); // both north, healing leg never crosses
+    expect(tunnelsUsed(state)).toBe(0);
   });
 });
 

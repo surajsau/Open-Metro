@@ -76,6 +76,21 @@ export class Interactions {
     return best;
   }
 
+  // A mid-line station of the currently-selected line is a removal target.
+  // Non-loop endpoints are excluded — those stay extend/retract territory.
+  private removalTarget(p: Vec): { lineId: number; stationId: number } | null {
+    const state = this.store.state;
+    if (state.selectedLine === null) return null;
+    const line = state.lines.find((l) => l.id === state.selectedLine);
+    if (!line) return null;
+    const st = this.hitStation(p);
+    if (!st) return null;
+    const idx = line.stations.indexOf(st.id);
+    if (idx === -1) return null;
+    if (!line.isLoop && (idx === 0 || idx === line.stations.length - 1)) return null;
+    return { lineId: line.id, stationId: st.id };
+  }
+
   private nearestLine(p: Vec): number | null {
     let best: number | null = null;
     let bestD = DROP_R;
@@ -140,6 +155,13 @@ export class Interactions {
       return;
     }
 
+    const removal = this.removalTarget(p);
+    if (removal) {
+      this.drag = { mode: 'removeStation', lineId: removal.lineId, stationId: removal.stationId, cursor: p, valid: false };
+      this.canvas!.setPointerCapture(e.pointerId);
+      return;
+    }
+
     const station = this.hitStation(p);
     if (station) {
       if (state.lines.length >= state.lineSlots) {
@@ -173,7 +195,25 @@ export class Interactions {
 
     if (this.drag.mode === 'newLine' || this.drag.mode === 'extend') this.moveChain(p);
     else if (this.drag.mode === 'insert') this.moveInsert(p);
+    else if (this.drag.mode === 'removeStation') this.moveRemove(p);
     else if (this.drag.mode === 'inventory') this.moveInventory(p);
+  }
+
+  private moveRemove(p: Vec): void {
+    const drag = this.drag as DragState & { mode: 'removeStation' };
+    const state = this.store.state;
+    const line = state.lines.find((l) => l.id === drag.lineId);
+    const station = state.stations.find((s) => s.id === drag.stationId);
+    if (!line || !station) {
+      drag.valid = false;
+      return;
+    }
+    const pulledOff = dist(p, station.pos) >= DROP_R;
+    const chain = line.stations.filter((id) => id !== drag.stationId);
+    const isLoop = line.isLoop && chain.length >= 3;
+    // length ≤ 1 collapses the line (delete + refund) — always a valid drop.
+    const healed = chain.length <= 1 || validateChain(state, chain, isLoop, line.id).ok;
+    drag.valid = pulledOff && healed;
   }
 
   private moveChain(p: Vec): void {
@@ -274,6 +314,8 @@ export class Interactions {
       if (drag.hoverStation !== null && drag.valid) {
         this.store.commitInsert(drag.lineId, drag.legIndex, drag.hoverStation);
       }
+    } else if (drag.mode === 'removeStation') {
+      if (drag.valid) this.store.commitRemoveStation(drag.lineId, drag.stationId);
     } else if (drag.mode === 'inventory') {
       this.dropInventory(drag, p);
     }
@@ -322,6 +364,7 @@ export class Interactions {
       return;
     }
     if (this.hitTailCap(p)) this.canvas.style.cursor = 'grab';
+    else if (this.removalTarget(p)) this.canvas.style.cursor = 'grab';
     else if (this.hitStation(p)) this.canvas.style.cursor = 'crosshair';
     else if (this.hitLeg(p)) this.canvas.style.cursor = 'grab';
     else this.canvas.style.cursor = 'default';

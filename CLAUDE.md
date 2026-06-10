@@ -22,7 +22,7 @@ Headless screenshot trick used for visual checks:
 - `src/game/` — pure-TS mutable core, no DOM. `stepGame(state, dt)` advances everything. Key modules: `types.ts` (all interfaces), `cities.ts` (3 maps: water polylines + pacing), `geometry.ts` (octilinear 45° paths, arc-length walking, miter offsets), `river.ts` (multi-river crossing counter = tunnel costs), `routing.ts` (per-shape BFS distance fields; passengers board iff next stop strictly decreases distance), `lines.ts` (all edits; tunnel usage is *derived*, never stored), `trains.ts` (movement + dwell-exchange FSM), `sim.ts` (clock, spawns, rewards cadence, overcrowding, adaptive `pressureFactor`), `rewards.ts`, `spawn.ts`, `state.ts`.
 - `src/store.ts` — `GameStore`: owns state + `tick(ts)`; React subscribes via `useSyncExternalStore` snapshot (version-compared, HUD fields only). Best scores in localStorage (`mm-best-<cityId>`).
 - `src/render/renderer.ts` — full canvas draw pass each rAF; reads state directly, never React.
-- `src/input/interactions.ts` — pointer state machine (new line / extend from tail caps / insert via leg grab / inventory drops). `dragState.ts` holds the shared types.
+- `src/input/interactions.ts` — pointer state machine (new line / extend from tail caps / insert via leg grab / remove mid-line station by selecting the line then dragging the station off / inventory drops). `dragState.ts` holds the shared types.
 - `src/ui/` — React HUD/modals only.
 
 ## Conventions

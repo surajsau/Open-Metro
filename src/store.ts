@@ -1,6 +1,6 @@
 import { CITIES, cityById } from './game/cities';
 import { DAY_NAMES } from './game/constants';
-import { applyChain, applyInterchange, createLine, deleteLine, insertStation } from './game/lines';
+import { applyChain, applyInterchange, createLine, deleteLine, insertStation, removeStation } from './game/lines';
 import { applyReward } from './game/rewards';
 import { recomputeRouting } from './game/routing';
 import { initialStations } from './game/spawn';
@@ -233,6 +233,10 @@ export class GameStore {
 
   commitInsert(lineId: number, legIndex: number, stationId: number): boolean {
     return this.reportResult(insertStation(this.state, lineId, legIndex, stationId));
+  }
+
+  commitRemoveStation(lineId: number, stationId: number): boolean {
+    return this.reportResult(removeStation(this.state, lineId, stationId));
   }
 
   removeLine(lineId: number): void {

@@ -142,6 +142,16 @@ export function insertStation(state: GameState, lineId: number, legIndex: number
   return applyChain(state, lineId, chain, line.isLoop);
 }
 
+export function removeStation(state: GameState, lineId: number, stationId: number): EditResult {
+  const line = lineById(state, lineId);
+  if (!line) return { ok: false, reason: 'Unknown line' };
+  if (!line.stations.includes(stationId)) return { ok: false, reason: 'Not on this line' };
+  const chain = line.stations.filter((id) => id !== stationId);
+  // A loop dropping below three stations can no longer close — break it open.
+  const isLoop = line.isLoop && chain.length >= 3;
+  return applyChain(state, lineId, chain, isLoop);
+}
+
 export function applyInterchange(state: GameState, stationId: number): EditResult {
   if (state.inventory.interchanges <= 0) return { ok: false, reason: 'No interchanges available' };
   const station = stationById(state, stationId);
