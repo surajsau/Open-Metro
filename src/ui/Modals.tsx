@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CITIES } from '../game/cities';
 import type { Snapshot } from '../store';
 import { bestScoreFor, store } from '../store';
@@ -35,11 +36,12 @@ export function RewardModal({ snap }: { snap: Snapshot }) {
 }
 
 export function GameOverOverlay({ snap }: { snap: Snapshot }) {
+  const endless = snap.mode === 'endless';
   return (
     <div className="overlay">
       <div className="panel gameover">
-        <h2>Your metro closed</h2>
-        <p>A station stayed overcrowded for too long.</p>
+        <h2>{endless ? 'Run complete' : 'Your metro closed'}</h2>
+        <p>{endless ? 'You ended your endless run.' : 'A station stayed overcrowded for too long.'}</p>
         <div className="final-score">{snap.score}</div>
         <p className="final-sub">
           passengers carried · {snap.week - 1} {snap.week - 1 === 1 ? 'week' : 'weeks'} survived
@@ -63,6 +65,7 @@ export function GameOverOverlay({ snap }: { snap: Snapshot }) {
 }
 
 export function StartScreen() {
+  const [endless, setEndless] = useState(false);
   return (
     <div className="overlay start">
       <div className="panel start-panel">
@@ -77,11 +80,20 @@ export function StartScreen() {
           <li>Don't let any station stay overcrowded.</li>
           <li>Each week brings a locomotive, an upgrade — and every other week a new line.</li>
         </ul>
+        <label className="endless-toggle">
+          <input type="checkbox" checked={endless} onChange={(e) => setEndless(e.target.checked)} />
+          <span className="endless-name">Endless mode</span>
+          <span className="endless-desc">overcrowding never closes the metro</span>
+        </label>
         <div className="city-grid">
           {CITIES.map((city) => {
             const best = bestScoreFor(city.id);
             return (
-              <button key={city.id} className="city-card" onClick={() => store.startCity(city.id)}>
+              <button
+                key={city.id}
+                className="city-card"
+                onClick={() => store.startCity(city.id, endless ? 'endless' : 'normal')}
+              >
                 <span className="city-top">
                   <span className="city-name">{city.name}</span>
                   <span className="city-dots" title={`difficulty ${city.difficulty}/3`}>

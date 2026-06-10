@@ -12,7 +12,7 @@ npm run build    # tsc --noEmit && vite build
 
 ## Dev URL params (combinable)
 
-`?autostart` skip start screen · `?demo` autostart + connect the 4 starter stations · `?seed=N` deterministic map · `?ff=120` synchronously fast-forward 120 sim-seconds · `?city=london|mumbai|tokyo`
+`?autostart` skip start screen · `?demo` autostart + connect the 4 starter stations · `?seed=N` deterministic map · `?ff=120` synchronously fast-forward 120 sim-seconds · `?city=london|mumbai|tokyo` · `?endless` endless mode (implies autostart)
 
 Headless screenshot trick used for visual checks:
 `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --screenshot=/tmp/x.png "http://localhost:5173/?demo&seed=1&ff=60"`

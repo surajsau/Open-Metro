@@ -1,5 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GameStore } from '../../store';
+
+function stubLocalStorage(): Map<string, string> {
+  const data = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+  });
+  return data;
+}
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('GameStore', () => {
   it('advances sim time only after start', () => {
@@ -42,6 +53,44 @@ describe('GameStore', () => {
     expect(store.state.time).toBeCloseTo(0.08, 5); // frozen while paused
     store.togglePause();
     expect(store.state.speed).toBe(2);
+  });
+
+  it('starts a city in endless mode and exposes it on the snapshot', () => {
+    const store = new GameStore(56);
+    store.startCity('london', 'endless');
+    expect(store.state.mode).toBe('endless');
+    expect(store.getSnapshot().mode).toBe('endless');
+  });
+
+  it('keeps the mode across restart', () => {
+    const store = new GameStore(57);
+    store.startCity('london', 'endless');
+    store.restart(57);
+    expect(store.state.mode).toBe('endless');
+  });
+
+  it('ends an endless run manually and records the best score', () => {
+    const data = stubLocalStorage();
+    const store = new GameStore(58);
+    store.startCity('london', 'endless');
+    store.state.score = 42;
+    store.endRun();
+    expect(store.state.gameOver).toBe(true);
+    expect(store.state.speed).toBe(0);
+    expect(data.get('mm-best-london')).toBe('42');
+  });
+
+  it('records the best score when abandoning a run via toMenu or restart', () => {
+    const data = stubLocalStorage();
+    const store = new GameStore(59);
+    store.startCity('london');
+    store.state.score = 17;
+    store.toMenu();
+    expect(data.get('mm-best-london')).toBe('17');
+    store.startCity('london');
+    store.state.score = 23;
+    store.restart();
+    expect(data.get('mm-best-london')).toBe('23');
   });
 
   it('surfaces toasts and expires them in real time', () => {

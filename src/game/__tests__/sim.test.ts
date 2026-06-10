@@ -53,6 +53,29 @@ describe('stepGame integration', () => {
     expect(state.speed).toBe(0);
   });
 
+  it('never ends an endless-mode game even when the gauge maxes out', () => {
+    const state = createGameState(32, undefined, 'endless');
+    state.stations.push(makeStation(1, 200, 200, 'circle'), makeStation(2, 400, 200, 'triangle'));
+    state.nextStationIn = 99999;
+    const station = state.stations[0];
+    for (let i = 0; i < 7; i++) spawnPassenger(state, station);
+    const dt = 1 / 30;
+    for (let i = 0; i < 90 * 30; i++) stepGame(state, dt);
+    expect(station.gauge).toBe(1); // visual pressure still maxes out
+    expect(state.gameOver).toBe(false);
+    expect(state.speed).toBe(1); // sim keeps running
+  });
+
+  it('keeps the weekly reward cadence in endless mode', () => {
+    const state = createGameState(33, undefined, 'endless');
+    state.stations.push(makeStation(1, 200, 200, 'circle'), makeStation(2, 400, 200, 'triangle'));
+    state.nextStationIn = 99999;
+    state.time = 7 * DAY_SECONDS - 0.1;
+    stepGame(state, 0.2);
+    expect(state.pendingReward).not.toBeNull();
+    expect(state.pendingReward!.week).toBe(1);
+  });
+
   it('fires the weekly reward exactly once and freezes the sim', () => {
     const state = createGameState(33);
     state.stations.push(makeStation(1, 200, 200, 'circle'), makeStation(2, 400, 200, 'triangle'));

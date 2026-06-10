@@ -78,7 +78,8 @@ export function stepGame(state: GameState, dt: number): void {
   for (const station of state.stations) {
     if (station.waiting.length > capacityOf(station)) {
       station.gauge = Math.min(1, station.gauge + dt / GAUGE_FILL_TIME);
-      if (station.gauge >= 1) {
+      // Endless mode: the gauge still maxes out for visual pressure, but never closes the metro.
+      if (station.gauge >= 1 && state.mode !== 'endless') {
         state.gameOver = true;
         state.speed = 0;
       }

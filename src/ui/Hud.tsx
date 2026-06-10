@@ -45,6 +45,14 @@ export function Hud({ snap }: { snap: Snapshot }) {
           </button>
         </div>
       </div>
+      {snap.mode === 'endless' && !snap.gameOver && (
+        <div className="hud endless-hud">
+          <span className="endless-badge">∞ endless</span>
+          <button className="endrun" onClick={() => store.endRun()}>
+            End run
+          </button>
+        </div>
+      )}
     </>
   );
 }

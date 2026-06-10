@@ -8,7 +8,9 @@ import './styles.css';
 // Dev affordances for headless/manual testing.
 const params = new URLSearchParams(location.search);
 const city = params.get('city');
-if (city) store.startCity(city);
+const mode = params.has('endless') ? 'endless' : 'normal';
+// ?endless implies autostart (same as ?city= today).
+if (city || mode === 'endless') store.startCity(city ?? store.state.city.id, mode);
 const seed = Number(params.get('seed') ?? 0);
 if (seed > 0) store.restart(seed); // restart marks the game started, keeps city
 else if (params.has('autostart') || params.has('demo')) store.start();

@@ -1,12 +1,13 @@
 import { CITIES } from './cities';
 import { DAY_SECONDS, START_LINE_SLOTS, START_LOCOMOTIVES, STATION_SPAWN_FIRST } from './constants';
 import { mulberry32 } from './rng';
-import type { City, GameState } from './types';
+import type { City, GameMode, GameState } from './types';
 
-export function createGameState(seed: number = Date.now(), city: City = CITIES[0]): GameState {
+export function createGameState(seed: number = Date.now(), city: City = CITIES[0], mode: GameMode = 'normal'): GameState {
   return {
     rng: mulberry32(seed),
     city,
+    mode,
     time: 0,
     speed: 1,
     prevSpeed: 1,

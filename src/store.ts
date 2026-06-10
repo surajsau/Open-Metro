@@ -8,11 +8,12 @@ import { createGameState, dayFracOf, dayOf } from './game/state';
 import { stepGame } from './game/sim';
 import { tunnelsUsed } from './game/lines';
 import { addCarriageToLine, addTrainToLine } from './game/trains';
-import type { City, EditResult, GameState, RewardKind, Speed, Toast, Vec } from './game/types';
+import type { City, EditResult, GameMode, GameState, RewardKind, Speed, Toast, Vec } from './game/types';
 
 export interface Snapshot {
   started: boolean;
   gameOver: boolean;
+  mode: GameMode;
   score: number;
   week: number;
   dayName: string;
@@ -67,8 +68,8 @@ export class GameStore {
     this.snapshot = this.buildSnapshot();
   }
 
-  private freshState(seed: number | undefined, city: City): GameState {
-    const state = createGameState(seed, city);
+  private freshState(seed: number | undefined, city: City, mode: GameMode = 'normal'): GameState {
+    const state = createGameState(seed, city, mode);
     initialStations(state);
     recomputeRouting(state);
     this.bestRecorded = false;
@@ -90,6 +91,7 @@ export class GameStore {
     return {
       started: s.started,
       gameOver: s.gameOver,
+      mode: s.mode,
       score: s.score,
       week: Math.floor(day / 7) + 1,
       dayName: DAY_NAMES[day % 7],
@@ -117,6 +119,7 @@ export class GameStore {
     const changed =
       prev.started !== next.started ||
       prev.gameOver !== next.gameOver ||
+      prev.mode !== next.mode ||
       prev.score !== next.score ||
       prev.week !== next.week ||
       prev.dayName !== next.dayName ||
@@ -148,10 +151,7 @@ export class GameStore {
     if (this.state.started) {
       stepGame(this.state, dtReal * this.state.speed);
     }
-    if (this.state.gameOver && !this.bestRecorded) {
-      this.bestRecorded = true;
-      recordBestScore(this.state.city.id, this.state.score);
-    }
+    if (this.state.gameOver) this.recordRunBest();
     this.pruneToasts();
     this.notify();
   }
@@ -163,6 +163,14 @@ export class GameStore {
     }
   }
 
+  // Any way a run ends — overcrowding, End run, abandoning to menu/restart —
+  // counts toward the city's best score. Recorded once per run.
+  private recordRunBest(): void {
+    if (this.bestRecorded || !this.state.started) return;
+    this.bestRecorded = true;
+    recordBestScore(this.state.city.id, this.state.score);
+  }
+
   // ---- actions -------------------------------------------------------------
 
   start(): void {
@@ -171,22 +179,33 @@ export class GameStore {
   }
 
   restart(seed?: number): void {
-    this.state = this.freshState(seed, this.state.city);
+    this.recordRunBest();
+    this.state = this.freshState(seed, this.state.city, this.state.mode);
     this.state.started = true;
     this.lastTs = null;
     this.notify();
   }
 
-  startCity(cityId: string): void {
-    this.state = this.freshState(undefined, cityById(cityId));
+  startCity(cityId: string, mode: GameMode = 'normal'): void {
+    this.recordRunBest();
+    this.state = this.freshState(undefined, cityById(cityId), mode);
     this.state.started = true;
     this.lastTs = null;
     this.notify();
   }
 
   toMenu(): void {
+    this.recordRunBest();
     this.state = this.freshState(undefined, this.state.city);
     this.lastTs = null;
+    this.notify();
+  }
+
+  // Endless mode has no overcrowding game over; this is the manual end.
+  endRun(): void {
+    this.state.gameOver = true;
+    this.state.speed = 0;
+    this.recordRunBest();
     this.notify();
   }
 

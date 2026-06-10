@@ -72,9 +72,12 @@ export interface City {
   rampPerDay: number; // daily interval decay factor
 }
 
+export type GameMode = 'normal' | 'endless';
+
 export interface GameState {
   rng: () => number;
   city: City;
+  mode: GameMode;
   time: number; // sim seconds
   speed: Speed;
   prevSpeed: 1 | 2;
