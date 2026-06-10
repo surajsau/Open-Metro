@@ -144,7 +144,7 @@ export class GameStore {
 
   setSpeed(speed: Speed): void {
     this.state.speed = speed;
-    if (speed > 0) this.state.prevSpeed = speed;
+    if (speed !== 0) this.state.prevSpeed = speed;
     this.notify();
   }
 

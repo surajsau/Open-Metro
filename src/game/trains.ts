@@ -69,7 +69,7 @@ function nextNodeAhead(line: Line, train: Train): { node: number; distance: numb
   return { node: 0, distance: Math.max(0, train.s) };
 }
 
-function arrive(state: GameState, line: Line, train: Train, node: number): void {
+function arrive(line: Line, train: Train, node: number): void {
   train.s = line.nodeS[node];
   train.state = 'dwell';
   train.atNode = node;
@@ -117,7 +117,7 @@ export function updateTrain(state: GameState, train: Train, dt: number): void {
     const { node, distance } = nextNodeAhead(line, train);
     const step = TRAIN_SPEED * dt;
     if (step >= distance) {
-      arrive(state, line, train, node);
+      arrive(line, train, node);
     } else {
       train.s += train.dir * step;
       if (line.isLoop) {

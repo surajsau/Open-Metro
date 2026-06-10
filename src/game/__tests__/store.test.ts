@@ -39,7 +39,7 @@ describe('GameStore', () => {
     store.togglePause();
     expect(store.state.speed).toBe(0);
     store.tick(200);
-    expect(store.state.time).toBeCloseTo(0.2, 5);
+    expect(store.state.time).toBeCloseTo(0.08, 5); // frozen while paused
     store.togglePause();
     expect(store.state.speed).toBe(2);
   });

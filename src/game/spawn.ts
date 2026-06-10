@@ -1,5 +1,4 @@
 import {
-  COMMON_SHAPES,
   EDGE_MARGIN,
   GROWTH_MAX_RX,
   GROWTH_MAX_RY,
