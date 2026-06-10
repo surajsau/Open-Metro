@@ -211,7 +211,7 @@ export class Interactions {
     // No station under the cursor: live tunnel feedback for the rubber band.
     const last = state.stations.find((s) => s.id === drag.chain[drag.chain.length - 1]);
     if (last) {
-      const crossings = countRiverCrossings(octilinearPath(last.pos, p));
+      const crossings = countRiverCrossings(octilinearPath(last.pos, p), state.city.rivers);
       // The drag chain re-counts its own crossings, so the edited line's
       // committed usage is excluded from the network total.
       drag.valid = tunnelsUsed(state, excludeLine) + this.chainCrossingsOf(drag.chain) + crossings <= state.inventory.tunnels;
@@ -225,7 +225,7 @@ export class Interactions {
     for (let i = 1; i < chain.length; i++) {
       const a = stations.get(chain[i - 1]);
       const b = stations.get(chain[i]);
-      if (a && b) sum += countRiverCrossings(octilinearPath(a.pos, b.pos));
+      if (a && b) sum += countRiverCrossings(octilinearPath(a.pos, b.pos), state.city.rivers);
     }
     return sum;
   }

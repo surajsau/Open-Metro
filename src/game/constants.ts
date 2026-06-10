@@ -62,12 +62,12 @@ export const MAX_RARE_PER_SHAPE = 2;
 export const STATION_SPAWN_FIRST = 10; // s until first spawned station
 export const PASSENGER_FIRST_DELAY: [number, number] = [6, 14];
 
-export function stationSpawnInterval(rng: () => number, day: number): number {
-  return (18 + rng() * 12) * Math.max(0.6, Math.pow(0.97, day));
+export function stationSpawnInterval(rng: () => number, day: number, pace = 1, ramp = 0.97): number {
+  return (18 + rng() * 12) * pace * Math.max(0.6, Math.pow(ramp, day));
 }
 
-export function passengerSpawnInterval(rng: () => number, day: number): number {
-  return (8 + rng() * 8) * Math.max(0.45, Math.pow(0.975, day));
+export function passengerSpawnInterval(rng: () => number, day: number, pace = 1, ramp = 0.975, pressure = 1): number {
+  return (8 + rng() * 8) * pace * Math.max(0.45, Math.pow(ramp, day)) * pressure;
 }
 
 // Station placement ellipse grows from the center over the first weeks.

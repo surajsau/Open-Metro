@@ -17,7 +17,7 @@ describe('spawnStation', () => {
       expect(st.pos.x).toBeLessThanOrEqual(WORLD.w - EDGE_MARGIN);
       expect(st.pos.y).toBeGreaterThanOrEqual(EDGE_MARGIN);
       expect(st.pos.y).toBeLessThanOrEqual(WORLD.h - EDGE_MARGIN);
-      expect(isInRiver(st.pos)).toBe(false);
+      expect(isInRiver(st.pos, state.city.rivers)).toBe(false);
     }
     for (const a of state.stations) {
       for (const b of state.stations) {
@@ -91,7 +91,7 @@ describe('initialStations', () => {
     const shapes = state.stations.map((s) => s.shape).sort();
     expect(shapes).toEqual(['circle', 'circle', 'square', 'triangle']);
     for (const st of state.stations) {
-      expect(isInRiver(st.pos)).toBe(false);
+      expect(isInRiver(st.pos, state.city.rivers)).toBe(false);
       expect(st.pos.x).toBeGreaterThanOrEqual(EDGE_MARGIN);
       expect(st.pos.x).toBeLessThanOrEqual(WORLD.w - EDGE_MARGIN);
     }

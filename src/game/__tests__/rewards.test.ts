@@ -24,7 +24,7 @@ describe('generateRewardOptions', () => {
 describe('applyReward', () => {
   it('grants each reward kind and clears the modal', () => {
     const state = createGameState(43);
-    state.pendingReward = { week: 1, options: ['line', 'tunnels'] };
+    state.pendingReward = { week: 1, options: ['line', 'tunnels'], unlockedLine: false };
     applyReward(state, 'line');
     expect(state.lineSlots).toBe(4);
     expect(state.pendingReward).toBeNull();

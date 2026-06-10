@@ -1,10 +1,12 @@
-import { DAY_SECONDS, START_LINE_SLOTS, START_LOCOMOTIVES, START_TUNNELS, STATION_SPAWN_FIRST } from './constants';
+import { CITIES } from './cities';
+import { DAY_SECONDS, START_LINE_SLOTS, START_LOCOMOTIVES, STATION_SPAWN_FIRST } from './constants';
 import { mulberry32 } from './rng';
-import type { GameState } from './types';
+import type { City, GameState } from './types';
 
-export function createGameState(seed: number = Date.now()): GameState {
+export function createGameState(seed: number = Date.now(), city: City = CITIES[0]): GameState {
   return {
     rng: mulberry32(seed),
+    city,
     time: 0,
     speed: 1,
     prevSpeed: 1,
@@ -13,7 +15,7 @@ export function createGameState(seed: number = Date.now()): GameState {
     stations: [],
     lines: [],
     trains: [],
-    inventory: { locomotives: START_LOCOMOTIVES, carriages: 0, tunnels: START_TUNNELS, interchanges: 0 },
+    inventory: { locomotives: START_LOCOMOTIVES, carriages: 0, tunnels: city.startTunnels, interchanges: 0 },
     lineSlots: START_LINE_SLOTS,
     score: 0,
     spawnedPassengers: 0,

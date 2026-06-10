@@ -21,7 +21,7 @@ function legPathsOfChain(state: GameState, chain: number[], isLoop: boolean): Ve
 }
 
 function chainCrossings(state: GameState, chain: number[], isLoop: boolean): number {
-  return legPathsOfChain(state, chain, isLoop).reduce((sum, leg) => sum + countRiverCrossings(leg), 0);
+  return legPathsOfChain(state, chain, isLoop).reduce((sum, leg) => sum + countRiverCrossings(leg, state.city.rivers), 0);
 }
 
 // Tunnel stock is owned in inventory; usage is always derived from the current

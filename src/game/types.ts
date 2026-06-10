@@ -61,8 +61,20 @@ export interface Toast {
   expiresAt: number; // epoch ms — toasts live in real time, not sim time
 }
 
+export interface City {
+  id: string;
+  name: string;
+  blurb: string;
+  difficulty: 1 | 2 | 3;
+  rivers: Vec[][];
+  startTunnels: number;
+  pace: { station: number; passenger: number }; // interval multipliers; lower = harder
+  rampPerDay: number; // daily interval decay factor
+}
+
 export interface GameState {
   rng: () => number;
+  city: City;
   time: number; // sim seconds
   speed: Speed;
   prevSpeed: 1 | 2;
@@ -79,7 +91,7 @@ export interface GameState {
   lastRewardDay: number;
   idCounter: number; // shared id source for stations/passengers/trains
   distFields: Map<ShapeKind, Map<number, number>>;
-  pendingReward: { week: number; options: [RewardKind, RewardKind] } | null;
+  pendingReward: { week: number; options: [RewardKind, RewardKind]; unlockedLine: boolean } | null;
   selectedLine: number | null;
   toasts: Toast[];
   effects: Effect[];

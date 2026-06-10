@@ -10,7 +10,6 @@ import {
   WORLD,
 } from '../game/constants';
 import { norm, octilinearPath, offsetPolyline, pointAtArcLength, polylineLength, sub } from '../game/geometry';
-import { RIVER_POINTS } from '../game/river';
 import type { GameState, Line, ShapeKind, Station, Vec } from '../game/types';
 import type { DragState } from '../input/dragState';
 import { computeLegOffsets, forEachLeg, legKey } from './legOffsets';
@@ -71,22 +70,23 @@ function drawGlyph(
   ctx.restore();
 }
 
-function drawRiver(ctx: CanvasRenderingContext2D): void {
+function drawRiver(ctx: CanvasRenderingContext2D, rivers: Vec[][]): void {
   ctx.strokeStyle = WATER;
   ctx.lineWidth = RIVER_HALF_W * 2;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   // Smooth meander: quadratic curves through segment midpoints.
-  const pts = RIVER_POINTS;
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i + 1].x) / 2;
-    const my = (pts[i].y + pts[i + 1].y) / 2;
-    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+  for (const pts of rivers) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    ctx.stroke();
   }
-  ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
-  ctx.stroke();
 }
 
 function legPoints(stations: Map<number, Station>, aId: number, bId: number, offset: number): Vec[] | null {
@@ -349,7 +349,7 @@ export function renderFrame(
 
   const stations = new Map(state.stations.map((s) => [s.id, s]));
 
-  drawRiver(ctx);
+  drawRiver(ctx, state.city.rivers);
   drawLines(ctx, state, stations);
   if (drag) drawDragPreview(ctx, state, stations, drag);
   drawTrains(ctx, state);

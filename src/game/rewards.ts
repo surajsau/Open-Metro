@@ -3,8 +3,10 @@ import { pickWeighted } from './rng';
 import type { GameState, RewardKind } from './types';
 
 export function generateRewardOptions(state: GameState): [RewardKind, RewardKind] {
+  // Lines also unlock automatically every second week, so the pool keeps the
+  // line option at a lower weight as an accelerator rather than the only path.
   const pool: [RewardKind, number][] = [];
-  if (state.lineSlots < MAX_LINES) pool.push(['line', 3]);
+  if (state.lineSlots < MAX_LINES) pool.push(['line', 2]);
   pool.push(['tunnels', 3], ['carriage', 2], ['interchange', 2]);
   const first = pickWeighted(state.rng, pool);
   const second = pickWeighted(

@@ -16,9 +16,9 @@ import {
   WORLD,
   WORLD_CENTER,
 } from './constants';
-import { dist, nearestPointOnPolyline } from './geometry';
+import { dist } from './geometry';
 import { pickWeighted, randRange } from './rng';
-import { RIVER_POINTS } from './river';
+import { distToWater } from './river';
 import { dayOf } from './state';
 import type { GameState, ShapeKind, Station, Vec } from './types';
 
@@ -27,7 +27,7 @@ const RIVER_CLEARANCE = 28 + STATION_R + 4; // band half-width + station radius 
 export function isValidStationPos(state: GameState, p: Vec): boolean {
   if (p.x < EDGE_MARGIN || p.x > WORLD.w - EDGE_MARGIN) return false;
   if (p.y < EDGE_MARGIN || p.y > WORLD.h - EDGE_MARGIN) return false;
-  if (nearestPointOnPolyline(RIVER_POINTS, p).dist < RIVER_CLEARANCE) return false;
+  if (distToWater(p, state.city.rivers) < RIVER_CLEARANCE) return false;
   return state.stations.every((s) => dist(s.pos, p) >= MIN_STATION_DIST);
 }
 
@@ -40,7 +40,15 @@ export function pickStationShape(state: GameState): ShapeKind {
       return candidates[Math.floor(state.rng() * candidates.length)];
     }
   }
-  return pickWeighted(state.rng, STATION_SHAPE_WEIGHTS);
+  // Demand-aware: common shapes get less likely the more of them exist, so
+  // maps stay varied instead of drowning in one shape.
+  const counts = new Map<ShapeKind, number>();
+  for (const s of state.stations) counts.set(s.shape, (counts.get(s.shape) ?? 0) + 1);
+  const weighted: [ShapeKind, number][] = STATION_SHAPE_WEIGHTS.map(([shape, w]) => [
+    shape,
+    w / (1 + 0.35 * (counts.get(shape) ?? 0)),
+  ]);
+  return pickWeighted(state.rng, weighted);
 }
 
 export function pickStationPosition(state: GameState): Vec | null {
