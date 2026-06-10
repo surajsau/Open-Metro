@@ -68,17 +68,17 @@ Derived (functions, not fields): `day = floor(time/DAY_SECONDS)`, `dayFrac`, `we
 
 **Files:** Create `package.json`, `vite.config.ts` (react plugin + `test: { environment: 'node' }`), `tsconfig.json` (strict, ES2022, bundler resolution, react-jsx), `index.html`, `src/main.tsx`, `src/App.tsx` (placeholder div), `src/styles.css`, `.gitignore`.
 
-- [x] Write config files by hand (no interactive scaffolder; dir is non-empty)
-- [x] `npm install react react-dom` + dev deps `typescript vite @vitejs/plugin-react vitest @types/react @types/react-dom`
-- [x] Verify: `npm run build` passes; `npm run dev` serves HTTP 200
-- [x] Commit `chore: scaffold vite react-ts app`
+- [ ] Write config files by hand (no interactive scaffolder; dir is non-empty)
+- [ ] `npm install react react-dom` + dev deps `typescript vite @vitejs/plugin-react vitest @types/react @types/react-dom`
+- [ ] Verify: `npm run build` passes; `npm run dev` serves HTTP 200
+- [ ] Commit `chore: scaffold vite react-ts app`
 
 ### Task 1: RNG + types + constants
 
 **Files:** `src/game/types.ts` (above), `src/game/constants.ts`, `src/game/rng.ts` (`mulberry32(seed)`, `randRange(rng,a,b)`, `pickWeighted<T>(rng, items: [T,number][]): T`), test `src/game/__tests__/rng.test.ts`.
 
-- [x] Test: same seed → same first 5 values; `pickWeighted` with weights [['a',1],['b',0]] always 'a'
-- [x] Implement; tests pass; commit `feat: game types, constants, seeded rng`
+- [ ] Test: same seed → same first 5 values; `pickWeighted` with weights [['a',1],['b',0]] always 'a'
+- [ ] Implement; tests pass; commit `feat: game types, constants, seeded rng`
 
 ### Task 2: Geometry
 
@@ -98,8 +98,8 @@ offsetPolyline(pts: Vec[], offset: number): Vec[]      // shift each segment alo
                                                        // fallback to simple shift when near-parallel); endpoints simple shift
 ```
 
-- [x] Tests (concrete numbers): octilinear of (0,0)→(100,40) = [(0,0),(40,40),(100,40)]; straight/diagonal cases 2 points; arc-length walk on L-path; nearestPoint on elbow path; offset of right-angle path by 7 has miter vertex (±7,±7-ish) — assert exact via intersection math; offset of straight line = parallel shift
-- [x] Implement; pass; commit `feat: geometry (octilinear, arc-length, offsets)`
+- [ ] Tests (concrete numbers): octilinear of (0,0)→(100,40) = [(0,0),(40,40),(100,40)]; straight/diagonal cases 2 points; arc-length walk on L-path; nearestPoint on elbow path; offset of right-angle path by 7 has miter vertex (±7,±7-ish) — assert exact via intersection math; offset of straight line = parallel shift
+- [ ] Implement; pass; commit `feat: geometry (octilinear, arc-length, offsets)`
 
 ### Task 3: River
 
@@ -107,8 +107,8 @@ offsetPolyline(pts: Vec[], offset: number): Vec[]      // shift each segment alo
 
 `RIVER_POINTS: Vec[]` fixed meander through lower-middle of world; `isInRiver(p)` = dist to polyline < `RIVER_HALF_W`; `countRiverCrossings(path: Vec[]): number` = sample path every 5 units along arc length, count contiguous inside-runs.
 
-- [x] Tests: vertical path crossing band once → 1; path far above → 0; path entering+exiting twice → 2; path along the river inside → 1
-- [x] Implement; pass; commit `feat: river band and crossing counter`
+- [ ] Tests: vertical path crossing band once → 1; path far above → 0; path entering+exiting twice → 2; path along the river inside → 1
+- [ ] Implement; pass; commit `feat: river band and crossing counter`
 
 ### Task 4: Spawning
 
@@ -123,8 +123,8 @@ spawnPassenger(state, station): void      // push to waiting, count spawnedPasse
 initialStations(state): void              // 4 fixed-ish starters: 2 circle, 1 triangle, 1 square, jittered, river-safe
 ```
 
-- [x] Tests (seeded rng, 200-iteration property style): positions respect min-dist/margins/river; rare shapes never exceed 2 stations; passenger shape ≠ origin shape and always exists on map; returns null when map saturated
-- [x] Implement; pass; commit `feat: station and passenger spawning`
+- [ ] Tests (seeded rng, 200-iteration property style): positions respect min-dist/margins/river; rare shapes never exceed 2 stations; passenger shape ≠ origin shape and always exists on map; returns null when map saturated
+- [ ] Implement; pass; commit `feat: station and passenger spawning`
 
 ### Task 5: Routing
 
@@ -132,8 +132,8 @@ initialStations(state): void              // 4 fixed-ish starters: 2 circle, 1 t
 
 `recomputeRouting(state)`: adjacency from every line's consecutive pairs (+ last↔first when loop); for each shape with ≥1 station: multi-source BFS → `distFields`. Helper `distTo(state, shape, stationId): number` (Infinity when absent).
 
-- [x] Tests: line A–B–C (triangle at C): dist triangle = [2,1,0]; two crossing lines transfer at hub gives finite dist across lines; loop A–B–C–D wraps (A to D = 1); station on no line → Infinity from elsewhere
-- [x] Implement; pass; commit `feat: shape distance fields (BFS routing)`
+- [ ] Tests: line A–B–C (triangle at C): dist triangle = [2,1,0]; two crossing lines transfer at hub gives finite dist across lines; loop A–B–C–D wraps (A to D = 1); station on no line → Infinity from elsewhere
+- [ ] Implement; pass; commit `feat: shape distance fields (BFS routing)`
 
 ### Task 6: Line operations
 
@@ -151,8 +151,8 @@ remapTrainsToPath(state, line, oldPath): void            // nearest-point remap,
 ```
 All mutating ops end with `recomputeRouting(state)`.
 
-- [x] Tests: create with 2 stations deploys locomotive (inventory 3→2); duplicate station rejected; create crossing river twice with tunnels:1 rejected, with 2 ok; retract that removes a crossing then re-add succeeds (refund works — `tunnelsUsed` derived); applyChain to length-1 deletes + refunds hardware to inventory; insertStation splices and re-paths; loop chain validates only ≥3; remap keeps `s` within [0, length]
-- [x] Implement; pass; commit `feat: line create/extend/insert/delete with tunnel budget`
+- [ ] Tests: create with 2 stations deploys locomotive (inventory 3→2); duplicate station rejected; create crossing river twice with tunnels:1 rejected, with 2 ok; retract that removes a crossing then re-add succeeds (refund works — `tunnelsUsed` derived); applyChain to length-1 deletes + refunds hardware to inventory; insertStation splices and re-paths; loop chain validates only ≥3; remap keeps `s` within [0, length]
+- [ ] Implement; pass; commit `feat: line create/extend/insert/delete with tunnel budget`
 
 ### Task 7: Trains & passenger exchange
 
@@ -174,8 +174,8 @@ updateTrain(state, train, dt): void                       // FSM:
 //          depart when dwellLeft<=0 and no action pending
 ```
 
-- [x] Tests (drive with fixed dt loops, seeded states built by hand): A(circle)–B(circle)–C(triangle), triangle passenger at A → delivered at C within simulated 60 s, score 1; passenger for unreachable shape never boards; capacity: 7 wanting passengers, only 6 board; terminus reversal returns train; loop line never reverses (dir stays 1 over full lap); transfer scenario: two lines sharing hub H — passenger from A (line 1) to D (line 2) alights at H then delivered via second train; interchange exchange twice as fast (count exchanges after fixed time)
-- [x] Implement; pass; commit `feat: trains, dwell exchange, board/alight rules`
+- [ ] Tests (drive with fixed dt loops, seeded states built by hand): A(circle)–B(circle)–C(triangle), triangle passenger at A → delivered at C within simulated 60 s, score 1; passenger for unreachable shape never boards; capacity: 7 wanting passengers, only 6 board; terminus reversal returns train; loop line never reverses (dir stays 1 over full lap); transfer scenario: two lines sharing hub H — passenger from A (line 1) to D (line 2) alights at H then delivered via second train; interchange exchange twice as fast (count exchanges after fixed time)
+- [ ] Implement; pass; commit `feat: trains, dwell exchange, board/alight rules`
 
 ### Task 8: Sim orchestration, rewards, store
 
@@ -187,8 +187,8 @@ updateTrain(state, train, dt): void                       // FSM:
 
 `store.ts` — `class GameStore`: `state`, `newGame(seed=Date.now())` (init stations, inventory, routing), rAF loop (`dtReal` clamp 0.05 s; `stepGame(state, dtReal*speed)`), `subscribe/getSnapshot` for `useSyncExternalStore` — snapshot object `{score, dayName, week, dayFrac2dp, speed, started, gameOver, weeks, inventory counts, linesInUse: number[], lineSlots, selectedLine, pendingReward, toasts, tunnelsFree}` rebuilt each step, version bumped only on shallow-≠. Actions: `start`, `setSpeed`, `togglePause`, `chooseReward`, `selectLine`, `deleteLine`, `restart`, `addToast`, plus passthroughs used by input layer.
 
-- [x] Sim tests: scripted 2-line network run 180 sim-seconds at dt=1/30 → deliveries > 0, passenger conservation (spawned = waiting+riding+delivered each step), all train `s` finite within bounds, gauges ∈[0,1]; isolated station with forced spawns → gameOver; reward fires exactly once at day 7 and pauses; `applyReward('line')` raises lineSlots; options never duplicate; 'line' absent when slots maxed
-- [x] Implement; pass; commit `feat: sim loop, weekly rewards, game store`
+- [ ] Sim tests: scripted 2-line network run 180 sim-seconds at dt=1/30 → deliveries > 0, passenger conservation (spawned = waiting+riding+delivered each step), all train `s` finite within bounds, gauges ∈[0,1]; isolated station with forced spawns → gameOver; reward fires exactly once at day 7 and pauses; `applyReward('line')` raises lineSlots; options never duplicate; 'line' absent when slots maxed
+- [ ] Implement; pass; commit `feat: sim loop, weekly rewards, game store`
 
 ### Task 9: Renderer (no unit tests except leg offsets)
 
@@ -198,8 +198,8 @@ updateTrain(state, train, dt): void                       // FSM:
 
 `renderFrame(ctx, state, drag: DragState|null, nowMs)` draws in order: bg → river (band stroke along RIVER_POINTS, width 56, rounded) → line legs (offset polylines, round joins; selected line +2 width & glow) → terminus tails + grab caps → drag previews (chain solid, cursor leg dashed; red when invalid; insert preview dims original leg) → trains (+carriages behind along path, white passenger grid 3×2, rotate to path angle; roundRect) → stations (pop-in easeOutBack 0.4 s, white fill, ink outline, interchange 1.65× double ring, overcrowd pie sweep r=20 + waiting passengers rows of 6 at offset (16,-4), 5-unit ink shapes) → effects (expanding fading rings) → inventory drag ghost. Letterbox transform: `setupViewport(canvas) → {scale, offsetX, offsetY}` and `toWorld(clientX, clientY)`.
 
-- [x] legOffsets test: two lines sharing pair (A,B) get ±3.5; single line gets 0; reversed leg same geometric side
-- [x] Implement renderer; visually verified in Task 11; commit `feat: canvas renderer`
+- [ ] legOffsets test: two lines sharing pair (A,B) get ±3.5; single line gets 0; reversed leg same geometric side
+- [ ] Implement renderer; visually verified in Task 11; commit `feat: canvas renderer`
 
 ### Task 10: Input
 
@@ -214,24 +214,24 @@ updateTrain(state, train, dt): void                       // FSM:
 ```
 `attachInteractions(canvas, store, getViewport): { getDrag(): DragState|null, beginInventoryDrag(item) }`. Hit priority on pointerdown: terminus cap (≤16) → station (≤22; needs free slot for newLine else toast) → leg (≤10). Chain mechanics: hover station ≤24 → push if `validateChain` ok (tunnel check per-candidate → `valid` flag for red preview); hover `chain[len-2]` → pop; hover `chain[0]` with len≥3 → loop preview. Release: commit via `createLine`/`applyChain`/`insertStation`; len-1 extend chain → `deleteLine`. ESC cancels. Window-level move/up during inventory drag; drop: locomotive/carriage → nearest line path ≤26, interchange → nearest non-interchange station ≤26; fail → toast + no consume.
 
-- [x] Implement; manual checklist (create, multi-extend, hover-back undo, retract-to-delete, loop close, insert, tunnel-reject red preview, inventory drops); commit `feat: pointer interactions`
+- [ ] Implement; manual checklist (create, multi-extend, hover-back undo, retract-to-delete, loop close, insert, tunnel-reject red preview, inventory drops); commit `feat: pointer interactions`
 
 ### Task 11: React UI
 
 **Files:** `src/ui/Icons.tsx` (inline SVG: passenger, locomotive, carriage, tunnel, interchange, shapes for reward cards), `src/ui/Hud.tsx` (score top-left; clock top-right: SVG circle + rotating hand from dayFrac, day name, week, speed buttons ⏸/▶/▶▶), `src/ui/InventoryBar.tsx` (pointerdown → beginInventoryDrag; counts; disabled at 0), `src/ui/LineChips.tsx` (7 chips: solid in-use → click selects, ⨯ deletes; ring available; dim locked), `src/ui/RewardModal.tsx`, `src/ui/GameOverOverlay.tsx`, `src/ui/StartScreen.tsx`, `src/ui/Toasts.tsx`, rewrite `src/App.tsx` (canvas + rAF wiring + ErrorBoundary + screen switching), `src/styles.css`.
 
-- [x] Implement; `npm run build` clean; manual run-through; commit `feat: HUD, modals, inventory, line chips`
+- [ ] Implement; `npm run build` clean; manual run-through; commit `feat: HUD, modals, inventory, line chips`
 
 ### Task 12: Polish & tuning
 
-- [x] Pop-in/pulse/overcrowd-pulse animations verified; cursors (grab/grabbing/crosshair); dashed previews; title/favicon (original SVG); difficulty feel pass (adjust constants only)
-- [x] Commit `polish: animation, cursors, tuning`
+- [ ] Pop-in/pulse/overcrowd-pulse animations verified; cursors (grab/grabbing/crosshair); dashed previews; title/favicon (original SVG); difficulty feel pass (adjust constants only)
+- [ ] Commit `polish: animation, cursors, tuning`
 
 ### Task 13: Verification & docs
 
-- [x] `npx vitest run` all green; `npm run build` clean
-- [x] Dev server boot + HTTP 200; headless Chrome screenshot if available (`"Google Chrome.app" --headless --screenshot` against dev server) — inspect for blank canvas
-- [x] Write project `CLAUDE.md` (commands, architecture map); final commit
+- [ ] `npx vitest run` all green; `npm run build` clean
+- [ ] Dev server boot + HTTP 200; headless Chrome screenshot if available (`"Google Chrome.app" --headless --screenshot` against dev server) — inspect for blank canvas
+- [ ] Write project `CLAUDE.md` (commands, architecture map); final commit
 
 ## Self-review (done)
 
