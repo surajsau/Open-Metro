@@ -3,11 +3,21 @@ import { store } from '../store';
 import { PassengerIcon } from './Icons';
 
 export function Hud({ snap }: { snap: Snapshot }) {
+  // Endless beat-your-best display (UI-19).
+  const showBeatBest = snap.mode === 'endless' && snap.runStartBest > 0 && !snap.gameOver;
+  const beatBestLabel =
+    showBeatBest && snap.score > snap.runStartBest
+      ? 'new best!'
+      : showBeatBest
+        ? `best ${snap.runStartBest}`
+        : null;
+
   return (
     <>
       <div className="hud score" aria-label="score">
         <PassengerIcon size={16} />
         <span>{snap.score}</span>
+        {beatBestLabel && <span className="score-best-label">{beatBestLabel}</span>}
       </div>
       <div className="hud clock-panel">
         <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden>

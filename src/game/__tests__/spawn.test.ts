@@ -96,4 +96,26 @@ describe('initialStations', () => {
       expect(st.pos.x).toBeLessThanOrEqual(WORLD.w - EDGE_MARGIN);
     }
   });
+
+  it('assigns all four starters distinct nextPassengerIn timers staggered across [6,22]s window (WLD-18)', () => {
+    // Run multiple seeds to check across RNG sequences
+    for (const seed of [109, 200, 300, 400, 500]) {
+      const state = createGameState(seed);
+      initialStations(state);
+      expect(state.stations).toHaveLength(4);
+      const timers = state.stations.map((s) => s.spawnTimer);
+      // All timers must be distinct
+      const unique = new Set(timers);
+      expect(unique.size).toBe(4);
+      // All timers must be within the stagger window [6, 22]
+      for (const t of timers) {
+        expect(t).toBeGreaterThanOrEqual(6);
+        expect(t).toBeLessThanOrEqual(22);
+      }
+      // At least one timer must exceed 14 (beyond the old PASSENGER_FIRST_DELAY[1])
+      // proving the stagger extends past the old window
+      const maxTimer = Math.max(...timers);
+      expect(maxTimer).toBeGreaterThan(14);
+    }
+  });
 });

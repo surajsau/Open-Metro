@@ -5,6 +5,7 @@ import {
   LINE_COLORS,
   LINE_WIDTH,
   RIVER_HALF_W,
+  STRANDED_COLOR,
   TAIL_LEN,
   WATER,
   WORLD,
@@ -339,10 +340,16 @@ function drawStations(ctx: CanvasRenderingContext2D, state: GameState): void {
       drawGlyph(ctx, st.shape, st.pos, 11, { fill: '#FFFFFF', stroke: INK, lineWidth: 3.5, scale: pop });
     }
 
+    const hasLines = state.lines.length > 0;
     st.waiting.forEach((p, i) => {
       const col = i % 8;
       const row = Math.floor(i / 8);
-      drawGlyph(ctx, p.shape, { x: st.pos.x + 20 + col * 11, y: st.pos.y - 16 - row * 12 }, 4.5, { fill: INK });
+      // Stranded tint: passenger's target shape has no reachable route (RDR-16).
+      const distField = state.distFields.get(p.shape);
+      const isStranded = hasLines && (distField === undefined || (distField.get(st.id) ?? Infinity) === Infinity);
+      drawGlyph(ctx, p.shape, { x: st.pos.x + 20 + col * 11, y: st.pos.y - 16 - row * 12 }, 4.5, {
+        fill: isStranded ? STRANDED_COLOR : INK,
+      });
     });
   }
 }

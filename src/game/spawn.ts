@@ -108,8 +108,25 @@ const STARTERS: { shape: ShapeKind; anchor: Vec }[] = [
   { shape: 'square', anchor: { x: 680, y: 560 } },
 ];
 
+// Stagger the four starter timers across [PASSENGER_FIRST_DELAY[0], PASSENGER_FIRST_DELAY[1]]
+// so stations don't all overflow at the same time (WLD-18).
+function starterTimers(rng: () => number): [number, number, number, number] {
+  const [lo, hi] = PASSENGER_FIRST_DELAY;
+  const range = hi - lo;
+  const step = range / STARTERS.length;
+  // Each starter gets its own random offset within its own sub-window.
+  return [
+    lo + 0 * step + rng() * step,
+    lo + 1 * step + rng() * step,
+    lo + 2 * step + rng() * step,
+    lo + 3 * step + rng() * step,
+  ] as [number, number, number, number];
+}
+
 export function initialStations(state: GameState): void {
-  for (const { shape, anchor } of STARTERS) {
+  const timers = starterTimers(state.rng);
+  for (let i = 0; i < STARTERS.length; i++) {
+    const { shape, anchor } = STARTERS[i];
     let pos: Vec = anchor;
     for (let attempt = 0; attempt < 40; attempt++) {
       const jitter = 20 + attempt * 6;
@@ -129,7 +146,7 @@ export function initialStations(state: GameState): void {
       isInterchange: false,
       waiting: [],
       gauge: 0,
-      spawnTimer: randRange(state.rng, PASSENGER_FIRST_DELAY[0], PASSENGER_FIRST_DELAY[1]),
+      spawnTimer: timers[i],
       bornAt: state.time,
     });
   }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CITIES } from '../cities';
 import { MAX_LINES } from '../constants';
 import { applyReward, generateRewardOptions } from '../rewards';
 import { createGameState } from '../state';
@@ -37,5 +38,23 @@ describe('applyReward', () => {
 
     applyReward(state, 'interchange');
     expect(state.inventory.interchanges).toBe(1);
+  });
+});
+
+describe('per-city tunnel reward amounts (WLD-20)', () => {
+  it('grants +2 tunnels on London', () => {
+    const london = CITIES[0]; // tunnelRewardAmount: 2
+    const state = createGameState(44, london);
+    const before = state.inventory.tunnels;
+    applyReward(state, 'tunnels');
+    expect(state.inventory.tunnels).toBe(before + 2);
+  });
+
+  it('grants +3 tunnels on Tokyo', () => {
+    const tokyo = CITIES[2]; // tunnelRewardAmount: 3
+    const state = createGameState(45, tokyo);
+    const before = state.inventory.tunnels;
+    applyReward(state, 'tunnels');
+    expect(state.inventory.tunnels).toBe(before + 3);
   });
 });

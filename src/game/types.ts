@@ -70,6 +70,8 @@ export interface City {
   startTunnels: number;
   pace: { station: number; passenger: number }; // interval multipliers; lower = harder
   rampPerDay: number; // daily interval decay factor
+  graceFactor: number; // early-game passenger interval multiplier; decays over GRACE_DECAY_DAYS (WLD-19)
+  tunnelRewardAmount: number; // tunnels granted per weekly tunnel reward (WLD-20)
 }
 
 export type GameMode = 'normal' | 'endless';

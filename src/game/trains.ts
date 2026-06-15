@@ -4,6 +4,12 @@ import { lineById, makeTrain, stationById } from './lines';
 import { distTo } from './routing';
 import type { EditResult, GameState, Line, Passenger, Station, Train, Vec } from './types';
 
+// Pre-built lookup maps passed from stepGame to avoid O(n) Array.find per train per tick (ENG-07).
+export interface StepLookups {
+  stationsById: Map<number, Station>;
+  linesById: Map<number, Line>;
+}
+
 const EPS = 1e-6;
 
 export function trainCapacity(train: Train): number {
@@ -108,8 +114,8 @@ function exchangeOne(state: GameState, line: Line, train: Train, station: Statio
   return false;
 }
 
-export function updateTrain(state: GameState, train: Train, dt: number): void {
-  const line = lineById(state, train.lineId);
+export function updateTrain(state: GameState, train: Train, dt: number, lookups?: StepLookups): void {
+  const line = lookups ? lookups.linesById.get(train.lineId) : lineById(state, train.lineId);
   if (!line || line.path.length < 2 || line.stations.length < 2) return;
   const total = polylineLength(line.path);
 
@@ -131,7 +137,8 @@ export function updateTrain(state: GameState, train: Train, dt: number): void {
   }
 
   // Dwelling: one passenger exchange per timer tick; actions extend the stay.
-  const station = stationById(state, line.stations[train.atNode]);
+  const stId = line.stations[train.atNode];
+  const station = lookups ? lookups.stationsById.get(stId) : stationById(state, stId);
   if (!station) {
     train.state = 'moving';
     train.atNode = -1;

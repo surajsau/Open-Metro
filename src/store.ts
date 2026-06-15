@@ -32,6 +32,7 @@ export interface Snapshot {
   cityId: string;
   cityName: string;
   best: number;
+  runStartBest: number; // best score at run start — does not update mid-run (UI-19)
 }
 
 const TOAST_LIFETIME_MS = 2600;
@@ -62,10 +63,31 @@ export class GameStore {
   private snapshot: Snapshot;
   private lastTs: number | null = null;
   private bestRecorded = false;
+  // Cache tunnelsFree so tunnelsUsed() is not recomputed every rAF tick.
+  // Invalidated on every line edit operation (NET-15: derived, never stored on state).
+  private _tunnelsFree: number = 0;
+  // Best score at the moment the current run started; does not update mid-run (UI-19).
+  private _runStartBest: number = 0;
 
   constructor(seed?: number) {
     this.state = this.freshState(seed, CITIES[0]);
+    this._tunnelsFree = this.computeTunnelsFree();
+    this._runStartBest = bestScoreFor(this.state.city.id);
     this.snapshot = this.buildSnapshot();
+  }
+
+  private computeTunnelsFree(): number {
+    return this.state.inventory.tunnels - tunnelsUsed(this.state);
+  }
+
+  private invalidateTunnels(): void {
+    this._tunnelsFree = this.computeTunnelsFree();
+  }
+
+  // Called by the ff loop in main.tsx after direct state mutations to sync
+  // any derived caches the store maintains (e.g., tunnelsFree).
+  syncDerivedCache(): void {
+    this.invalidateTunnels();
   }
 
   private freshState(seed: number | undefined, city: City, mode: GameMode = 'normal'): GameState {
@@ -103,13 +125,14 @@ export class GameStore {
       locomotives: s.inventory.locomotives,
       carriages: s.inventory.carriages,
       tunnels: s.inventory.tunnels,
-      tunnelsFree: s.inventory.tunnels - tunnelsUsed(s),
+      tunnelsFree: this._tunnelsFree,
       interchanges: s.inventory.interchanges,
       pendingReward: s.pendingReward,
       toasts: s.toasts,
       cityId: s.city.id,
       cityName: s.city.name,
       best: bestScoreFor(s.city.id),
+      runStartBest: this._runStartBest,
     };
   }
 
@@ -136,7 +159,8 @@ export class GameStore {
       prev.pendingReward !== next.pendingReward ||
       prev.toasts !== next.toasts ||
       prev.cityId !== next.cityId ||
-      prev.best !== next.best;
+      prev.best !== next.best ||
+      prev.runStartBest !== next.runStartBest;
     if (changed) {
       this.snapshot = next;
       for (const l of this.listeners) l();
@@ -181,23 +205,29 @@ export class GameStore {
   restart(seed?: number): void {
     this.recordRunBest();
     this.state = this.freshState(seed, this.state.city, this.state.mode);
+    this._runStartBest = bestScoreFor(this.state.city.id);
     this.state.started = true;
     this.lastTs = null;
+    this.invalidateTunnels();
     this.notify();
   }
 
   startCity(cityId: string, mode: GameMode = 'normal'): void {
     this.recordRunBest();
     this.state = this.freshState(undefined, cityById(cityId), mode);
+    this._runStartBest = bestScoreFor(this.state.city.id);
     this.state.started = true;
     this.lastTs = null;
+    this.invalidateTunnels();
     this.notify();
   }
 
   toMenu(): void {
     this.recordRunBest();
     this.state = this.freshState(undefined, this.state.city);
+    this._runStartBest = 0; // back on menu, no active run
     this.lastTs = null;
+    this.invalidateTunnels();
     this.notify();
   }
 
@@ -222,6 +252,8 @@ export class GameStore {
   chooseReward(kind: RewardKind): void {
     if (!this.state.pendingReward) return;
     applyReward(this.state, kind);
+    // Tunnel reward changes inventory.tunnels — recompute free count.
+    if (kind === 'tunnels') this.invalidateTunnels();
     this.notify();
   }
 
@@ -243,23 +275,32 @@ export class GameStore {
   }
 
   commitCreate(chain: number[], isLoop: boolean): boolean {
-    return this.reportResult(createLine(this.state, chain, isLoop));
+    const res = createLine(this.state, chain, isLoop);
+    if (res.ok) this.invalidateTunnels();
+    return this.reportResult(res);
   }
 
   commitChain(lineId: number, chain: number[], isLoop: boolean): boolean {
-    return this.reportResult(applyChain(this.state, lineId, chain, isLoop));
+    const res = applyChain(this.state, lineId, chain, isLoop);
+    if (res.ok) this.invalidateTunnels();
+    return this.reportResult(res);
   }
 
   commitInsert(lineId: number, legIndex: number, stationId: number): boolean {
-    return this.reportResult(insertStation(this.state, lineId, legIndex, stationId));
+    const res = insertStation(this.state, lineId, legIndex, stationId);
+    if (res.ok) this.invalidateTunnels();
+    return this.reportResult(res);
   }
 
   commitRemoveStation(lineId: number, stationId: number): boolean {
-    return this.reportResult(removeStation(this.state, lineId, stationId));
+    const res = removeStation(this.state, lineId, stationId);
+    if (res.ok) this.invalidateTunnels();
+    return this.reportResult(res);
   }
 
   removeLine(lineId: number): void {
     deleteLine(this.state, lineId);
+    this.invalidateTunnels();
     this.notify();
   }
 

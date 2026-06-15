@@ -24,6 +24,8 @@ export const CITIES: City[] = [
     startTunnels: 4,
     pace: { station: 1.15, passenger: 1.15 },
     rampPerDay: 0.985,
+    graceFactor: 1.40,
+    tunnelRewardAmount: 2,
   },
   {
     id: 'mumbai',
@@ -47,6 +49,8 @@ export const CITIES: City[] = [
     startTunnels: 3,
     pace: { station: 1.0, passenger: 0.98 },
     rampPerDay: 0.978,
+    graceFactor: 1.20,
+    tunnelRewardAmount: 2,
   },
   {
     id: 'tokyo',
@@ -70,6 +74,8 @@ export const CITIES: City[] = [
     startTunnels: 3,
     pace: { station: 0.95, passenger: 0.9 },
     rampPerDay: 0.975,
+    graceFactor: 1.00,
+    tunnelRewardAmount: 3,
   },
 ];
 

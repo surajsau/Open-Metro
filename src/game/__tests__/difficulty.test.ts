@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CITIES } from '../cities';
 import { DAY_SECONDS, MAX_LINES, STATION_CAP, passengerSpawnInterval, stationSpawnInterval } from '../constants';
+import { mulberry32 } from '../rng';
 import { pickStationShape } from '../spawn';
 import { createGameState } from '../state';
 import { pressureFactor, stepGame } from '../sim';
@@ -92,12 +93,6 @@ describe('city difficulty wiring', () => {
 });
 
 describe('spawn interval bounds (tougher-spawn-balance: GD-37, WLD-05, WLD-12)', () => {
-  // With pressureFactor=1 and day=0, the formulas reduce to their raw min..max range.
-  // Passenger: (7 + rng*7) => min 7, max 14 (when pace=1)
-  // Station:   (20 + rng*12) => min 20, max 32 (when pace=1)
-  //
-  // We use rng()=0 for min and rng()=1 for max, passing a controlled function.
-
   it('passenger interval min is 7 s at pace=1, day=0, pressureFactor=1', () => {
     const interval = passengerSpawnInterval(() => 0, 0, 1, 0.975, 1);
     expect(interval).toBeCloseTo(7, 5);
@@ -119,13 +114,42 @@ describe('spawn interval bounds (tougher-spawn-balance: GD-37, WLD-05, WLD-12)',
   });
 
   it('per-city pace multipliers preserve relative difficulty ordering', () => {
-    // London < Mumbai < Tokyo means London has fastest pace (smallest pace value = shortest intervals)
-    // Actually: in Mini Metro, "harder" means faster spawns, so tokyo.pace > london.pace
-    // Verify that station intervals are shorter on tokyo than on london (same rng, day=0)
     const londonStationInterval = stationSpawnInterval(() => 0.5, 0, CITIES[0].pace.station, 0.97);
     const tokyoStationInterval = stationSpawnInterval(() => 0.5, 0, CITIES[2].pace.station, 0.97);
-    // Tokyo is harder so pace.station should be higher (shorter ramp time) or it may be lower multiplier
-    // The invariant is just that the per-city ordering is intact — just ensure they differ
     expect(londonStationInterval).not.toBeCloseTo(tokyoStationInterval, 1);
+  });
+});
+
+describe('per-city grace period (WLD-19)', () => {
+  it('at day 0, London effective passenger interval is >= Tokyo * 1.30', () => {
+    const london = CITIES[0]; // graceFactor 1.40
+    const tokyo = CITIES[2];  // graceFactor 1.00
+    const rngL = mulberry32(200);
+    const rngT = mulberry32(200);
+
+    let sumL = 0, sumT = 0;
+    const N = 500;
+    for (let i = 0; i < N; i++) {
+      sumL += passengerSpawnInterval(rngL, 0, london.pace.passenger, london.rampPerDay, 1, london.graceFactor);
+      sumT += passengerSpawnInterval(rngT, 0, tokyo.pace.passenger, tokyo.rampPerDay, 1, tokyo.graceFactor);
+    }
+    expect(sumL / N).toBeGreaterThanOrEqual((sumT / N) * 1.30);
+  });
+
+  it('at day 4, grace contribution has decayed (intervals within natural pace ratio)', () => {
+    const london = CITIES[0];
+    const tokyo = CITIES[2];
+    const rngL = mulberry32(201);
+    const rngT = mulberry32(201);
+
+    let sumL = 0, sumT = 0;
+    const N = 500;
+    for (let i = 0; i < N; i++) {
+      sumL += passengerSpawnInterval(rngL, 4, london.pace.passenger, london.rampPerDay, 1, london.graceFactor);
+      sumT += passengerSpawnInterval(rngT, 4, tokyo.pace.passenger, tokyo.rampPerDay, 1, tokyo.graceFactor);
+    }
+    const ratio = sumL / sumT;
+    expect(ratio).toBeGreaterThan(1.0);
+    expect(ratio).toBeLessThan(1.55);
   });
 });

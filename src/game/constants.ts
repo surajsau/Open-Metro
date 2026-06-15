@@ -60,7 +60,11 @@ export const RARE_UNLOCK_DAY = 4;
 export const MAX_RARE_PER_SHAPE = 2;
 
 export const STATION_SPAWN_FIRST = 14; // s until first spawned station
-export const PASSENGER_FIRST_DELAY: [number, number] = [6, 14];
+export const PASSENGER_FIRST_DELAY: [number, number] = [6, 22]; // stagger window for starter timers (WLD-18)
+
+export const GRACE_DECAY_DAYS = 3; // grace period fully decays at this day (WLD-19)
+
+export const STRANDED_COLOR = '#C8A43A'; // amber tint for unreachable passengers (RDR-16)
 
 export const STATION_SPAWN_BASE_MIN = 20; // s; additive base before rng·spread
 export const STATION_SPAWN_BASE_SPREAD = 12; // s; rng multiplier
@@ -72,8 +76,17 @@ export function stationSpawnInterval(rng: () => number, day: number, pace = 1, r
   return (STATION_SPAWN_BASE_MIN + rng() * STATION_SPAWN_BASE_SPREAD) * pace * Math.max(0.6, Math.pow(ramp, day));
 }
 
-export function passengerSpawnInterval(rng: () => number, day: number, pace = 1, ramp = 0.975, pressure = 1): number {
-  return (PASSENGER_SPAWN_BASE_MIN + rng() * PASSENGER_SPAWN_BASE_SPREAD) * pace * Math.max(0.45, Math.pow(ramp, day)) * pressure;
+export function passengerSpawnInterval(
+  rng: () => number,
+  day: number,
+  pace = 1,
+  ramp = 0.975,
+  pressure = 1,
+  graceFactor = 1,
+): number {
+  const graceDecay = Math.max(0, 1 - day / GRACE_DECAY_DAYS);
+  const grace = Math.max(1, graceFactor * graceDecay);
+  return (PASSENGER_SPAWN_BASE_MIN + rng() * PASSENGER_SPAWN_BASE_SPREAD) * pace * Math.max(0.45, Math.pow(ramp, day)) * pressure * grace;
 }
 
 // Station placement ellipse grows from the center over the first weeks.

@@ -69,11 +69,17 @@ export function stepGame(state: GameState, dt: number): void {
         state.city.pace.passenger,
         state.city.rampPerDay,
         pressure,
+        state.city.graceFactor,
       );
     }
   }
 
-  for (const train of [...state.trains]) updateTrain(state, train, dt);
+  // Build O(1) lookups once per step to avoid O(n) Array.find inside updateTrain (ENG-07).
+  const lookups = {
+    stationsById: new Map(state.stations.map((s) => [s.id, s])),
+    linesById: new Map(state.lines.map((l) => [l.id, l])),
+  };
+  for (const train of [...state.trains]) updateTrain(state, train, dt, lookups);
 
   for (const station of state.stations) {
     if (station.waiting.length > capacityOf(station)) {

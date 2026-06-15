@@ -22,7 +22,7 @@ export function applyReward(state: GameState, kind: RewardKind): void {
       state.lineSlots = Math.min(MAX_LINES, state.lineSlots + 1);
       break;
     case 'tunnels':
-      state.inventory.tunnels += 2;
+      state.inventory.tunnels += state.city.tunnelRewardAmount;
       break;
     case 'carriage':
       state.inventory.carriages += 1;

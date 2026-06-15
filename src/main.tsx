@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { applyReward } from './game/rewards';
 import { stepGame } from './game/sim';
 import { store } from './store';
 import './styles.css';
@@ -25,9 +26,22 @@ if (params.has('demo')) {
 const ff = Number(params.get('ff') ?? 0);
 if (ff > 0) {
   // Synchronously fast-forward the sim (headless rAF barely advances).
+  // Auto-apply reward option 0 when a pending reward would block the loop
+  // (UI-20). applyReward runs normally so RNG is consumed identically to
+  // interactive play — determinism is preserved.
   const dt = 1 / 30;
-  for (let t = 0; t < ff; t += dt) stepGame(store.state, dt);
+  for (let t = 0; t < ff; t += dt) {
+    if (store.state.pendingReward) {
+      applyReward(store.state, store.state.pendingReward.options[0]);
+    }
+    stepGame(store.state, dt);
+  }
+  // Synchronise the store's tunnel cache after mutating state directly.
+  store.syncDerivedCache();
 }
+
+// @ts-ignore
+if (import.meta.env.DEV) (window as any).__gameStore = store;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

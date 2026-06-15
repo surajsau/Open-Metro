@@ -4,6 +4,22 @@ import type { Snapshot } from '../store';
 import { bestScoreFor, store } from '../store';
 import { LocomotiveIcon, NewLineIcon, REWARD_LABELS, rewardIcon } from './Icons';
 
+function rewardHint(kind: string, snap: Snapshot): string | null {
+  switch (kind) {
+    case 'tunnels':
+      return snap.tunnelsFree > 0 ? `${snap.tunnelsFree} tunnel(s) free` : null;
+    case 'carriage':
+      return `${snap.carriages} carriage(s) in stock`;
+    case 'line':
+      if (snap.lineSlots >= 7) return null;
+      return `${snap.linesInUse.length} of ${snap.lineSlots} lines in use`;
+    case 'interchange':
+      return `${snap.interchanges} interchange(s) in stock`;
+    default:
+      return null;
+  }
+}
+
 export function RewardModal({ snap }: { snap: Snapshot }) {
   const reward = snap.pendingReward;
   if (!reward) return null;
@@ -23,12 +39,16 @@ export function RewardModal({ snap }: { snap: Snapshot }) {
         )}
         <p className="reward-hint">Choose one upgrade:</p>
         <div className="reward-options">
-          {reward.options.map((kind) => (
-            <button key={kind} className="reward-card" onClick={() => store.chooseReward(kind)}>
-              {rewardIcon(kind)}
-              <span>{REWARD_LABELS[kind]}</span>
-            </button>
-          ))}
+          {reward.options.map((kind) => {
+            const hint = rewardHint(kind, snap);
+            return (
+              <button key={kind} className="reward-card" onClick={() => store.chooseReward(kind)}>
+                {rewardIcon(kind)}
+                <span>{REWARD_LABELS[kind]}</span>
+                {hint && <span className="reward-card-hint">{hint}</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
