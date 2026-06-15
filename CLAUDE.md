@@ -10,6 +10,8 @@ npm test         # vitest run (game core is fully unit-tested)
 npm run build    # tsc --noEmit && vite build
 ```
 
+A `Makefile` wraps these plus extras — `make help` lists all targets. Notables: `make check` (tests + typecheck + build), `make test FILTER=routing` (narrow by filename), `make screenshot` (headless capture of a running dev server, `PARAMS=`/`OUT=` overridable).
+
 ## Dev URL params (combinable)
 
 `?autostart` skip start screen · `?demo` autostart + connect the 4 starter stations · `?seed=N` deterministic map · `?ff=120` synchronously fast-forward 120 sim-seconds · `?city=london|mumbai|tokyo` · `?endless` endless mode (implies autostart)
