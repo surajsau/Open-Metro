@@ -5,6 +5,9 @@ import { stepGame } from './game/sim';
 import { store } from './store';
 import './styles.css';
 
+// @ts-ignore
+if (import.meta.env.DEV) (window as any).__gameStore = store;
+
 // Dev affordances for headless/manual testing.
 const params = new URLSearchParams(location.search);
 const city = params.get('city');

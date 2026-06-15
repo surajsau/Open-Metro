@@ -42,7 +42,7 @@ A `City` defines: `rivers` (one or more water polylines), `startTunnels`, `pace`
 
 | ID | Requirement |
 |----|-------------|
-| WLD-05 | The first non-starter station spawns at t = 14 s (`STATION_SPAWN_FIRST`); thereafter the interval is `(24 + rng·14) × city.pace.station × max(0.6, rampPerDay^day)` seconds — base 24–38 s shrinking daily toward a 0.6× floor. |
+| WLD-05 | The first non-starter station spawns at t = 14 s (`STATION_SPAWN_FIRST`); thereafter the interval is `(20 + rng·12) × city.pace.station × max(0.6, rampPerDay^day)` seconds — base 20–32 s shrinking daily toward a 0.6× floor. (Previously 24–38 s; tightened to increase early pressure without changing the ramp floor or per-city pace multipliers.) |
 | WLD-06 | Hard cap: 38 stations (`STATION_LIMIT`). At the cap, or when no valid position is found within the attempt budget, the spawn is skipped but the timer still resets — the growing placement ellipse (WLD-07) can open space for later attempts, so the scheduler must never stall. |
 | WLD-07 | Placement is rejection sampling, ≤60 attempts, uniform over an ellipse centered at (800, 470) whose radii are `740×430 × growthFactor(day)` with `growthFactor = min(1, 0.42 + 0.018·day)` — the city grows outward over the first ~32 days. |
 | WLD-08 | A valid position is ≥60 units from every world edge (`EDGE_MARGIN`), ≥70 from every existing station (`MIN_STATION_DIST`), and ≥43 from water (band half-width 28 + station radius 11 + 4 breathing room). |
@@ -59,7 +59,7 @@ A `City` defines: `rivers` (one or more water polylines), `startTunnels`, `pace`
 
 | ID | Requirement |
 |----|-------------|
-| WLD-12 | Each station has an independent countdown; on expiry it spawns one passenger and resets to `(9 + rng·8) × city.pace.passenger × max(0.45, rampPerDay^day) × pressureFactor` seconds — base 9–17 s, daily ramp to a 0.45× floor, scaled by adaptive pressure. |
+| WLD-12 | Each station has an independent countdown; on expiry it spawns one passenger and resets to `(7 + rng·7) × city.pace.passenger × max(0.45, rampPerDay^day) × pressureFactor` seconds — base 7–14 s, daily ramp to a 0.45× floor, scaled by adaptive pressure. (Previously 9–17 s; tightened to increase passenger demand pressure while preserving the adaptive `pressureFactor` envelope 0.75–1.75× and the ramp floor.) |
 | WLD-13 | The passenger's target shape follows [GD-11](01-game-design.md#shapes): weighted circle 4 / triangle 3 / square 2.5 / rares 1.25, over shapes currently present on the map, excluding the origin's shape. If no other shape exists yet, nothing spawns (the timer still resets). |
 | WLD-14 | `spawnedPassengers` counts every spawn (used by tests for conservation invariants). |
 

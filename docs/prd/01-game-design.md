@@ -103,7 +103,7 @@ to keep every station below its overcrowding limit. Score = passengers delivered
 | ID | Rule |
 |----|------|
 | GD-36 | Three cities set the stage: **London** (1 river, 4 starting tunnels, gentlest pacing — difficulty ●○○), **Mumbai** (coast + harbour inlet, 3 tunnels — ●●○), **Tokyo** (2 rivers cutting 3 strips, 3 tunnels, fastest pacing — ●●●). |
-| GD-37 | Station and passenger spawn intervals shrink day by day per the city's ramp, toward a floor. The playable area also grows outward from the center over the first weeks. |
+| GD-37 | Station and passenger spawn intervals shrink day by day per the city's ramp, toward a floor. The playable area also grows outward from the center over the first weeks. Station base interval is 20–32 s; passenger base interval is 7–14 s — both tighter than in earlier builds to increase pressure for experienced players while remaining solvable through good topology. |
 | GD-38 | Adaptive pressure: when stations are drowning, passenger spawns slow by up to 1.75×; when the network is cruising, they tighten to 0.75× — the run stays tense without becoming unwinnable luck. |
 
 ## Scoring & meta

@@ -62,12 +62,18 @@ export const MAX_RARE_PER_SHAPE = 2;
 export const STATION_SPAWN_FIRST = 14; // s until first spawned station
 export const PASSENGER_FIRST_DELAY: [number, number] = [6, 14];
 
+export const STATION_SPAWN_BASE_MIN = 20; // s; additive base before rng·spread
+export const STATION_SPAWN_BASE_SPREAD = 12; // s; rng multiplier
+
+export const PASSENGER_SPAWN_BASE_MIN = 7; // s; additive base before rng·spread
+export const PASSENGER_SPAWN_BASE_SPREAD = 7; // s; rng multiplier
+
 export function stationSpawnInterval(rng: () => number, day: number, pace = 1, ramp = 0.97): number {
-  return (24 + rng() * 14) * pace * Math.max(0.6, Math.pow(ramp, day));
+  return (STATION_SPAWN_BASE_MIN + rng() * STATION_SPAWN_BASE_SPREAD) * pace * Math.max(0.6, Math.pow(ramp, day));
 }
 
 export function passengerSpawnInterval(rng: () => number, day: number, pace = 1, ramp = 0.975, pressure = 1): number {
-  return (9 + rng() * 8) * pace * Math.max(0.45, Math.pow(ramp, day)) * pressure;
+  return (PASSENGER_SPAWN_BASE_MIN + rng() * PASSENGER_SPAWN_BASE_SPREAD) * pace * Math.max(0.45, Math.pow(ramp, day)) * pressure;
 }
 
 // Station placement ellipse grows from the center over the first weeks.
