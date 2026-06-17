@@ -20,17 +20,18 @@ A `City` defines: `rivers` (one or more water polylines), `startTunnels`, `pace`
 (station/passenger interval multipliers — *lower is faster is harder*), and `rampPerDay`
 (daily interval decay factor). Shipped maps:
 
-| City | Difficulty | Water | Start tunnels | Pace (station / passenger) | Ramp/day |
-|------|-----------|-------|---------------|---------------------------|----------|
-| London | 1 | 1 river | 4 | 1.15 / 1.15 | 0.985 |
-| Mumbai | 2 | coast + harbour inlet (2 polylines) | 3 | 1.00 / 0.98 | 0.978 |
-| Tokyo | 3 | 2 rivers (3 strips) | 3 | 0.95 / 0.90 | 0.975 |
+| City | Difficulty | Water | Inspired by | Start tunnels | Pace (station / passenger) | Ramp/day |
+|------|-----------|-------|-------------|---------------|---------------------------|----------|
+| London | 1 | 1 river (Thames) | Single river flowing broadly west→east across the lower third of the map, with a gentle S-curve | 4 | 1.15 / 1.15 | 0.985 |
+| Mumbai | 2 | coast + harbour inlet (2 polylines) | Western coastline (Arabian Sea) running roughly north-south on the left edge; Thane Creek inlet curving in from the south-east | 3 | 1.00 / 0.98 | 0.978 |
+| Tokyo | 3 | 2 rivers (3 strips) | Arakawa/Tama corridor on the left half; Sumida/Edo corridor on the right half — both flowing broadly north-to-south, splitting the map into three playable strips | 3 | 0.95 / 0.90 | 0.975 |
 
 | ID | Requirement |
 |----|-------------|
 | WLD-01 | Water is always a list of polylines (`rivers: Vec[][]`); every water query (placement clearance, tunnel counting, rendering) must handle any number of bands. Each band is the polyline swept to half-width 28 (`RIVER_HALF_W`). |
 | WLD-02 | Unknown city ids fall back to London (`cityById`). |
 | WLD-03 | City polylines extend beyond the 1600×1000 world so bands visually bleed off-screen. |
+| WLD-18 | Water polylines for each city are inspired by real-world geography. The shapes must be recognisable to someone who knows the city, but may be distorted to fit the 1600×1000 canvas and to produce gameplay-interesting topology (tunnel cost opportunities). Pure aesthetic curvature with no crossing-count effect is not a goal — every bend should either reflect real geography or create a useful crossing point. |
 
 ## Initial map
 

@@ -108,25 +108,34 @@ const STARTERS: { shape: ShapeKind; anchor: Vec }[] = [
   { shape: 'square', anchor: { x: 680, y: 560 } },
 ];
 
+// Tokyo has two N-S rivers (Arakawa ~x=420-510, Sumida ~x=1060-1150) that
+// divide the map into three strips. The default STARTERS all fall in the
+// middle strip, so Tokyo needs city-specific anchors that reach the outer ones.
+const STARTERS_TOKYO: { shape: ShapeKind; anchor: Vec }[] = [
+  { shape: 'circle',   anchor: { x: 260,  y: 400 } }, // left strip (west of Arakawa)
+  { shape: 'triangle', anchor: { x: 750,  y: 320 } }, // middle strip
+  { shape: 'square',   anchor: { x: 900,  y: 580 } }, // middle strip
+  { shape: 'circle',   anchor: { x: 1340, y: 450 } }, // right strip (east of Sumida)
+];
+
+const STARTERS_BY_CITY: Partial<Record<string, { shape: ShapeKind; anchor: Vec }[]>> = {
+  tokyo: STARTERS_TOKYO,
+};
+
 // Stagger the four starter timers across [PASSENGER_FIRST_DELAY[0], PASSENGER_FIRST_DELAY[1]]
 // so stations don't all overflow at the same time (WLD-18).
-function starterTimers(rng: () => number): [number, number, number, number] {
+function starterTimers(rng: () => number, count: number): number[] {
   const [lo, hi] = PASSENGER_FIRST_DELAY;
   const range = hi - lo;
-  const step = range / STARTERS.length;
-  // Each starter gets its own random offset within its own sub-window.
-  return [
-    lo + 0 * step + rng() * step,
-    lo + 1 * step + rng() * step,
-    lo + 2 * step + rng() * step,
-    lo + 3 * step + rng() * step,
-  ] as [number, number, number, number];
+  const step = range / count;
+  return Array.from({ length: count }, (_, i) => lo + i * step + rng() * step);
 }
 
 export function initialStations(state: GameState): void {
-  const timers = starterTimers(state.rng);
-  for (let i = 0; i < STARTERS.length; i++) {
-    const { shape, anchor } = STARTERS[i];
+  const starters = STARTERS_BY_CITY[state.city.id] ?? STARTERS;
+  const timers = starterTimers(state.rng, starters.length);
+  for (let i = 0; i < starters.length; i++) {
+    const { shape, anchor } = starters[i];
     let pos: Vec = anchor;
     for (let attempt = 0; attempt < 40; attempt++) {
       const jitter = 20 + attempt * 6;

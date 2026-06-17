@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DAY_SECONDS, EDGE_MARGIN, MIN_STATION_DIST, STATION_LIMIT, WORLD } from '../constants';
 import { dist } from '../geometry';
 import { isInRiver } from '../river';
+import { cityById } from '../cities';
 import { createGameState } from '../state';
 import { initialStations, pickPassengerShape, pickStationShape, spawnPassenger, spawnStation } from '../spawn';
 import { makeStation } from './helpers';
@@ -117,5 +118,49 @@ describe('initialStations', () => {
       const maxTimer = Math.max(...timers);
       expect(maxTimer).toBeGreaterThan(14);
     }
+  });
+
+  it('Tokyo starters cover all three vertical strips (left <467, middle 467-1103, right >1103)', () => {
+    // Tokyo has rivers at x≈420-510 (left/Arakawa) and x≈1060-1150 (right/Sumida).
+    // The three strips are: left (x<467), middle (467<x<1103), right (x>1103).
+    // At least one initial station must land in each strip across multiple seeds.
+    const tokyo = cityById('tokyo');
+    const LEFT_BOUNDARY = 467;   // right edge of Arakawa river + clearance
+    const RIGHT_BOUNDARY = 1103; // left edge of Sumida river - clearance
+
+    const strips = { left: false, middle: false, right: false };
+
+    // Test across several seeds to account for jitter variability
+    for (let seed = 1; seed <= 20; seed++) {
+      const state = createGameState(seed, tokyo);
+      initialStations(state);
+      for (const st of state.stations) {
+        if (st.pos.x < LEFT_BOUNDARY) strips.left = true;
+        else if (st.pos.x > RIGHT_BOUNDARY) strips.right = true;
+        else strips.middle = true;
+      }
+      if (strips.left && strips.middle && strips.right) break;
+    }
+
+    expect(strips.left).toBe(true);
+    expect(strips.middle).toBe(true);
+    expect(strips.right).toBe(true);
+  });
+
+  it('Tokyo starters with seed=1 land in all three strips', () => {
+    // Deterministic check: with seed=1, all three strips must be represented.
+    const tokyo = cityById('tokyo');
+    const LEFT_BOUNDARY = 467;
+    const RIGHT_BOUNDARY = 1103;
+    const state = createGameState(1, tokyo);
+    initialStations(state);
+
+    const hasLeft = state.stations.some((s) => s.pos.x < LEFT_BOUNDARY);
+    const hasMiddle = state.stations.some((s) => s.pos.x >= LEFT_BOUNDARY && s.pos.x <= RIGHT_BOUNDARY);
+    const hasRight = state.stations.some((s) => s.pos.x > RIGHT_BOUNDARY);
+
+    expect(hasLeft).toBe(true);
+    expect(hasMiddle).toBe(true);
+    expect(hasRight).toBe(true);
   });
 });

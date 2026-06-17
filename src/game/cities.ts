@@ -2,23 +2,30 @@ import type { City } from './types';
 
 export type { City };
 
-// Original map layouts. Pace multiplies spawn intervals (lower = faster =
-// harder); rampPerDay is the daily interval decay.
+// Geography-inspired map layouts. Polylines bleed off-screen so water bands
+// render flush to canvas edges. Pace multiplies spawn intervals (lower = faster
+// = harder); rampPerDay is the daily interval decay.
 export const CITIES: City[] = [
   {
     id: 'london',
     name: 'London',
-    blurb: 'One gentle river. A kind place to learn the ropes.',
+    // Thames curves through the south. Room to breathe at first.
+    blurb: 'The Thames curves through the south. Room to breathe at first.',
     difficulty: 1,
     rivers: [
+      // Thames: single west-to-east band across the lower third of the map.
+      // Gentle S-curve: dips south near the centre (the Isle of Dogs bend),
+      // rises slightly east of centre (Canary Wharf reach).
       [
-        { x: -60, y: 640 },
-        { x: 250, y: 590 },
-        { x: 560, y: 640 },
-        { x: 880, y: 720 },
-        { x: 1180, y: 660 },
-        { x: 1420, y: 580 },
-        { x: 1700, y: 560 },
+        { x: -60,  y: 640 },
+        { x: 220,  y: 610 },
+        { x: 480,  y: 635 },
+        { x: 700,  y: 680 },
+        { x: 880,  y: 710 },
+        { x: 1060, y: 685 },
+        { x: 1260, y: 650 },
+        { x: 1480, y: 620 },
+        { x: 1700, y: 605 },
       ],
     ],
     startTunnels: 4,
@@ -30,20 +37,27 @@ export const CITIES: City[] = [
   {
     id: 'mumbai',
     name: 'Mumbai',
-    blurb: 'A busy coast and a harbour inlet cutting inland.',
+    blurb: 'Arabian Sea hugs the west. Thane Creek cuts inland from the south-east.',
     difficulty: 2,
     rivers: [
+      // Arabian Sea coastline: hugs the LEFT edge, runs north-to-south.
+      // Bleeds off the top and bottom so the coast is always visible.
       [
-        { x: -100, y: 905 },
-        { x: 400, y: 860 },
-        { x: 800, y: 885 },
-        { x: 1200, y: 845 },
-        { x: 1700, y: 870 },
+        { x: 120,  y: -50  },
+        { x: 100,  y: 180  },
+        { x: 85,   y: 420  },
+        { x: 90,   y: 650  },
+        { x: 110,  y: 860  },
+        { x: 130,  y: 1060 },
       ],
+      // Thane Creek / harbour inlet: enters from the BOTTOM-RIGHT and cuts
+      // diagonally north-west inland, representing the creek that separates
+      // the peninsula from the mainland.
       [
-        { x: 1040, y: 1010 },
-        { x: 990, y: 760 },
-        { x: 930, y: 545 },
+        { x: 1100, y: 1020 },
+        { x: 980,  y: 800  },
+        { x: 880,  y: 580  },
+        { x: 820,  y: 360  },
       ],
     ],
     startTunnels: 3,
@@ -55,20 +69,29 @@ export const CITIES: City[] = [
   {
     id: 'tokyo',
     name: 'Tokyo',
-    blurb: 'Two rivers slice the city into three demanding strips.',
+    // Two rivers slice the city into three columns. Fast and unforgiving.
+    blurb: 'Two rivers slice the city into three columns. Fast and unforgiving.',
     difficulty: 3,
     rivers: [
+      // Arakawa / Tama corridor — LEFT third of the map, broadly north-to-south.
+      // Slight drift eastward as it approaches the bay in the south.
       [
-        { x: -100, y: 330 },
-        { x: 400, y: 295 },
-        { x: 900, y: 360 },
-        { x: 1700, y: 315 },
+        { x: 430,  y: -60  },
+        { x: 420,  y: 200  },
+        { x: 440,  y: 450  },
+        { x: 460,  y: 700  },
+        { x: 490,  y: 920  },
+        { x: 510,  y: 1060 },
       ],
+      // Sumida / Edo corridor — RIGHT third of the map, broadly north-to-south.
+      // Slight drift westward toward the centre as it nears Tokyo Bay.
       [
-        { x: -100, y: 705 },
-        { x: 500, y: 745 },
-        { x: 1000, y: 680 },
-        { x: 1700, y: 725 },
+        { x: 1140, y: -60  },
+        { x: 1150, y: 200  },
+        { x: 1130, y: 450  },
+        { x: 1110, y: 700  },
+        { x: 1080, y: 920  },
+        { x: 1060, y: 1060 },
       ],
     ],
     startTunnels: 3,
