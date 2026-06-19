@@ -41,6 +41,36 @@ export function computeLegOffsets(lines: Line[]): Map<string, number> {
   return offsets;
 }
 
+// Given the arc-length positions of each station along a line (nodeS), return the
+// index of the leg that arc-length position s falls on. For loops, totalLength
+// must be provided so s can be mapped onto the closing leg.
+export function legIndexAtArcLength(
+  nodeS: number[],
+  s: number,
+  isLoop: boolean,
+  totalLength?: number,
+): number {
+  const numLegs = nodeS.length - 1 + (isLoop ? 1 : 0);
+  if (numLegs <= 0) return 0;
+
+  // Walk through station arc-lengths to find the leg that brackets s.
+  for (let i = 0; i < nodeS.length - 1; i++) {
+    // Leg i spans [nodeS[i], nodeS[i+1]).
+    // Use < for upper bound so the station node falls on the *next* leg (train leaving).
+    // Exception: clamp on the very last station of a non-loop.
+    if (s < nodeS[i + 1]) return i;
+  }
+
+  // s is at or past the last station.
+  if (isLoop && totalLength !== undefined && s < totalLength) {
+    // Closing leg: last leg index = nodeS.length - 1.
+    return nodeS.length - 1;
+  }
+
+  // Clamp to the last leg for non-loop lines or loop s beyond totalLength.
+  return nodeS.length - 2;
+}
+
 export interface ShiftedTermini {
   /** World-space start of the head tail stub (first station, shifted perpendicular). */
   headStart: Vec;

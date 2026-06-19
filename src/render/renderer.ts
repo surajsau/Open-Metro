@@ -4,6 +4,7 @@ import {
   INVALID_COLOR,
   LINE_COLORS,
   LINE_WIDTH,
+  PARALLEL_WIDTH_FACTOR,
   RIVER_HALF_W,
   STRANDED_COLOR,
   TAIL_LEN,
@@ -13,7 +14,7 @@ import {
 import { norm, octilinearPath, offsetPolyline, pointAtArcLength, polylineLength, sub } from '../game/geometry';
 import type { GameState, Line, ShapeKind, Station, Vec } from '../game/types';
 import type { DragState } from '../input/dragState';
-import { computeLegOffsets, computeShiftedTermini, forEachLeg, legKey } from './legOffsets';
+import { computeLegOffsets, computeShiftedTermini, forEachLeg, legIndexAtArcLength, legKey } from './legOffsets';
 import { shapePath } from './shapes';
 
 export interface Viewport {
@@ -116,8 +117,9 @@ function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Ma
         strokePolyline(ctx, pts);
         ctx.restore();
       }
+      const legOffset = offsets.get(legKey(line.id, legIndex)) ?? 0;
       ctx.strokeStyle = color;
-      ctx.lineWidth = LINE_WIDTH;
+      ctx.lineWidth = legOffset !== 0 ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
       strokePolyline(ctx, pts);
     });
     // Pass the perpendicular-shifted terminus positions so tail stubs sit on the
@@ -307,6 +309,7 @@ function drawTrainBody(
 }
 
 function drawTrains(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const offsets = computeLegOffsets(state.lines);
   for (const train of state.trains) {
     const line = state.lines.find((l) => l.id === train.lineId);
     if (!line || line.path.length < 2) continue;
@@ -325,9 +328,22 @@ function drawTrains(ctx: CanvasRenderingContext2D, state: GameState): void {
       if (line.isLoop) s = ((s % total) + total) % total;
       else s = Math.max(0, Math.min(total, s));
       const { point, angle } = pointAtArcLength(line.path, s);
+
+      // Shift the train's rendered position onto its parallel strand.
+      // The perpendicular (left-normal) direction for a segment with heading `angle`
+      // is (-sin(angle), cos(angle)) — the same convention used by offsetPolyline.
+      const legIdx = legIndexAtArcLength(line.nodeS, s, line.isLoop, total);
+      const legOffset = offsets.get(legKey(line.id, legIdx)) ?? 0;
+      const shifted: { x: number; y: number } = legOffset === 0
+        ? point
+        : {
+            x: point.x + (-Math.sin(angle)) * legOffset,
+            y: point.y + Math.cos(angle) * legOffset,
+          };
+
       const unitRiders = riders.slice(u * 6, u * 6 + 6);
-      if (u === 0) drawTrainBody(ctx, point, angle, LOCO_LEN, 16, color, unitRiders);
-      else drawTrainBody(ctx, point, angle, CAR_LEN, 13, color, unitRiders);
+      if (u === 0) drawTrainBody(ctx, shifted, angle, LOCO_LEN, 16, color, unitRiders);
+      else drawTrainBody(ctx, shifted, angle, CAR_LEN, 13, color, unitRiders);
     }
   }
 }

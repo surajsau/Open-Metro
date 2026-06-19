@@ -29,6 +29,7 @@ export const RIVER_HALF_W = 28;
 
 export const LINE_WIDTH = 8;
 export const PARALLEL_GAP = 12; // strand center spacing; > LINE_WIDTH so parallel lines show daylight
+export const PARALLEL_WIDTH_FACTOR = 0.5; // stroke multiplier for legs shared by 2+ lines
 export const TAIL_LEN = 22;
 export const STATION_R = 11;
 export const STATION_HIT_R = 22;
