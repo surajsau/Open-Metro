@@ -5,7 +5,7 @@ import { countRiverCrossings } from '../game/river';
 import { tunnelsUsed } from '../game/lines';
 import type { Station, Vec } from '../game/types';
 import { tailEnds, toWorld, type Viewport } from '../render/renderer';
-import { forEachLeg } from '../render/legOffsets';
+import { computeLegOffsets, computeShiftedTermini, forEachLeg } from '../render/legOffsets';
 import type { GameStore } from '../store';
 import type { DragState, InventoryItem } from './dragState';
 
@@ -47,8 +47,12 @@ export class Interactions {
   }
 
   private hitTailCap(p: Vec): { lineId: number; end: 'head' | 'tail' } | null {
-    for (const line of this.store.state.lines) {
-      const ends = tailEnds(line);
+    const state = this.store.state;
+    const stations = new Map(state.stations.map((s) => [s.id, s]));
+    const offsets = computeLegOffsets(state.lines);
+    for (const line of state.lines) {
+      const termini = computeShiftedTermini(line, offsets, stations);
+      const ends = tailEnds(line, termini?.headStart, termini?.tailStart);
       if (!ends) continue;
       if (dist(p, ends.head) <= TAIL_HIT_R) return { lineId: line.id, end: 'head' };
       if (dist(p, ends.tail) <= TAIL_HIT_R) return { lineId: line.id, end: 'tail' };

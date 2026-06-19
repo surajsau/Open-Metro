@@ -13,7 +13,7 @@ import {
 import { norm, octilinearPath, offsetPolyline, pointAtArcLength, polylineLength, sub } from '../game/geometry';
 import type { GameState, Line, ShapeKind, Station, Vec } from '../game/types';
 import type { DragState } from '../input/dragState';
-import { computeLegOffsets, forEachLeg, legKey } from './legOffsets';
+import { computeLegOffsets, computeShiftedTermini, forEachLeg, legKey } from './legOffsets';
 import { shapePath } from './shapes';
 
 export interface Viewport {
@@ -120,31 +120,51 @@ function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Ma
       ctx.lineWidth = LINE_WIDTH;
       strokePolyline(ctx, pts);
     });
-    drawTails(ctx, line, color);
+    // Pass the perpendicular-shifted terminus positions so tail stubs sit on the
+    // correct strand rather than converging at the unshifted center (RDR-06).
+    const termini = computeShiftedTermini(line, offsets, stations);
+    drawTails(ctx, line, color, termini?.headStart, termini?.tailStart);
   }
 }
 
 // Grabbable stubs that extend past each terminus of a non-loop line.
-export function tailEnds(line: Line): { head: Vec; tail: Vec; headDir: Vec; tailDir: Vec } | null {
+// headStart / tailStart override the start positions used for the cap and the stub stroke;
+// pass the perpendicular-shifted terminus points for parallel-line rendering so each
+// strand's tail cap sits on the correct strand rather than at the unshifted center.
+export function tailEnds(
+  line: Line,
+  headStart?: Vec,
+  tailStart?: Vec,
+): { head: Vec; tail: Vec; headDir: Vec; tailDir: Vec } | null {
   if (line.isLoop || line.path.length < 2) return null;
   const p = line.path;
   const headDir = norm(sub(p[0], p[1]));
   const tailDir = norm(sub(p[p.length - 1], p[p.length - 2]));
+  const hs = headStart ?? p[0];
+  const ts = tailStart ?? p[p.length - 1];
   return {
-    head: { x: p[0].x + headDir.x * TAIL_LEN, y: p[0].y + headDir.y * TAIL_LEN },
-    tail: { x: p[p.length - 1].x + tailDir.x * TAIL_LEN, y: p[p.length - 1].y + tailDir.y * TAIL_LEN },
+    head: { x: hs.x + headDir.x * TAIL_LEN, y: hs.y + headDir.y * TAIL_LEN },
+    tail: { x: ts.x + tailDir.x * TAIL_LEN, y: ts.y + tailDir.y * TAIL_LEN },
     headDir,
     tailDir,
   };
 }
 
-function drawTails(ctx: CanvasRenderingContext2D, line: Line, color: string): void {
-  const ends = tailEnds(line);
+function drawTails(
+  ctx: CanvasRenderingContext2D,
+  line: Line,
+  color: string,
+  headStart?: Vec,
+  tailStart?: Vec,
+): void {
+  const ends = tailEnds(line, headStart, tailStart);
   if (!ends) return;
+  const hs = headStart ?? line.path[0];
+  const ts = tailStart ?? line.path[line.path.length - 1];
   ctx.strokeStyle = color;
   ctx.lineWidth = LINE_WIDTH;
-  strokePolyline(ctx, [line.path[0], ends.head]);
-  strokePolyline(ctx, [line.path[line.path.length - 1], ends.tail]);
+  strokePolyline(ctx, [hs, ends.head]);
+  strokePolyline(ctx, [ts, ends.tail]);
   ctx.fillStyle = color;
   for (const cap of [ends.head, ends.tail]) {
     ctx.beginPath();

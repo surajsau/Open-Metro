@@ -1,5 +1,6 @@
 import { PARALLEL_GAP } from '../game/constants';
-import type { Line } from '../game/types';
+import { octilinearPath, offsetPolyline } from '../game/geometry';
+import type { Line, Station, Vec } from '../game/types';
 
 export const legKey = (lineId: number, legIndex: number): string => `${lineId}:${legIndex}`;
 
@@ -38,4 +39,49 @@ export function computeLegOffsets(lines: Line[]): Map<string, number> {
     });
   }
   return offsets;
+}
+
+export interface ShiftedTermini {
+  /** World-space start of the head tail stub (first station, shifted perpendicular). */
+  headStart: Vec;
+  /** World-space start of the tail stub (last station, shifted perpendicular). */
+  tailStart: Vec;
+}
+
+// Compute the perpendicular-shifted start points for a non-loop line's tail stubs.
+// Returns null for loop lines (no tails). For lines with no shared corridor the
+// shifts are zero and the returned points coincide with the station positions.
+export function computeShiftedTermini(
+  line: Line,
+  offsets: Map<string, number>,
+  stations: Map<number, Station>,
+): ShiftedTermini | null {
+  if (line.isLoop || line.stations.length < 2) return null;
+
+  // Head terminus: first station, offset of the first leg (legIndex 0).
+  const headOffset = offsets.get(legKey(line.id, 0)) ?? 0;
+  const stHead0 = stations.get(line.stations[0]);
+  const stHead1 = stations.get(line.stations[1]);
+
+  // Tail terminus: last station, offset of the last leg.
+  const lastLegIdx = line.stations.length - 2;
+  const tailOffset = offsets.get(legKey(line.id, lastLegIdx)) ?? 0;
+  const stTail0 = stations.get(line.stations[lastLegIdx]);
+  const stTail1 = stations.get(line.stations[lastLegIdx + 1]);
+
+  // Fall back to station.pos when a station is missing (should not happen in practice).
+  let headStart: Vec = stHead0?.pos ?? { x: 0, y: 0 };
+  let tailStart: Vec = stTail1?.pos ?? { x: 0, y: 0 };
+
+  if (stHead0 && stHead1 && headOffset !== 0) {
+    const shiftedPath = offsetPolyline(octilinearPath(stHead0.pos, stHead1.pos), headOffset);
+    headStart = shiftedPath[0];
+  }
+
+  if (stTail0 && stTail1 && tailOffset !== 0) {
+    const shiftedPath = offsetPolyline(octilinearPath(stTail0.pos, stTail1.pos), tailOffset);
+    tailStart = shiftedPath[shiftedPath.length - 1];
+  }
+
+  return { headStart, tailStart };
 }
