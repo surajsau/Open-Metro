@@ -32,7 +32,7 @@ to keep every station below its overcrowding limit. Score = passengers delivered
 |----|------|
 | GD-04 | One in-game day lasts 20 real seconds at 1× speed. Weeks run MON→SUN; the HUD clock hand makes one revolution per day. |
 | GD-05 | Speed controls: pause / 1× / 2×. Unpausing restores the last non-zero speed. |
-| GD-06 | While paused, the sim clock freezes but line editing remains fully available ("plan calmly while paused"). |
+| GD-06 | While paused, the sim clock freezes but line editing remains fully available ("plan calmly while paused"). Manual hardware deployment (locomotive and carriage inventory drags) is also only allowed while paused — see GD-42. |
 | GD-07 | The sim also freezes while a weekly reward modal is open and after game over. |
 
 ## Shapes
@@ -77,10 +77,11 @@ to keep every station below its overcrowding limit. Score = passengers delivered
 
 | ID | Rule |
 |----|------|
-| GD-26 | Creating a line auto-deploys one locomotive if any are in stock. More locomotives can be drag-dropped onto a line, entering service near the drop point heading toward the longer remaining stretch. |
+| GD-26 | Creating a line auto-deploys one locomotive if any are in stock (this happens regardless of pause state). More locomotives can be drag-dropped onto a line — but only while the game is paused (see GD-42). |
 | GD-27 | A train holds 6 passengers, +6 per attached carriage, max 4 carriages. A dropped carriage attaches to the target line's train with the fewest carriages. |
 | GD-28 | Trains run at constant speed (75 world-units/s), dwell at stations to exchange passengers one at a time (alighting before boarding), reverse at the termini of open lines, and circulate endlessly around loops. |
 | GD-29 | Hardware is never destroyed: line deletion refunds locomotives and carriages to inventory. Moving a deployed train between lines directly is out of scope for v1. |
+| GD-42 | **Hardware deployment requires pause.** Dragging a locomotive or carriage from the inventory bar onto a line is only permitted when the game is paused (speed = 0). If the player begins an inventory drag while the game is running (speed > 0), the drag is rejected immediately and a toast reads "Pause the game to deploy trains". The carriage drop obeys the same gate. Line editing (GD-18) and auto-deploy on line creation (GD-26) are unaffected. |
 
 ## Passengers & routing
 

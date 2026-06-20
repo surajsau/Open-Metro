@@ -39,7 +39,7 @@ release, so no rule logic exists in this layer.
 
 | ID | Requirement |
 |----|-------------|
-| INP-04 | Canvas gestures require the game to be interactive: started, not game-over, no reward modal open. Only button 0 starts a drag; pointer capture holds the gesture. |
+| INP-04 | Canvas gestures require the game to be interactive: started, not game-over, no reward modal open. Only button 0 starts a drag; pointer capture holds the gesture. Inventory drags (locomotive, carriage) carry an additional gate: the game must be paused (speed = 0) — see INP-17. |
 | INP-05 | Pointer-down resolution order: **tail cap** (extend) → **removal target** (selected line's station; on non-loops the two endpoints are excluded — they remain extend/retract territory) → **station** (new line) → **leg** (insert) → empty canvas (clear line selection). |
 | INP-06 | Starting a new line with no free slot does not start a drag; it toasts "No lines available" immediately. Otherwise the pending line previews in the lowest free palette color ([NET-02](04-network-editing.md#line-model)). |
 
@@ -71,6 +71,7 @@ release, so no rule logic exists in this layer.
 |----|-------------|
 | INP-14 | Inventory drags begin on DOM buttons (`beginInventoryDrag`) and are tracked with window-level listeners so the drop can land anywhere on the canvas; the ghost follows the cursor ([RDR-09](06-rendering.md#draw-order)). |
 | INP-15 | Targets resolve live: locomotive/carriage → nearest line path within 30 units; interchange → nearest non-interchange station within 30. Release on a target commits the matching store action; failures surface as toasts from the core's `EditResult.reason`. Release on nothing cancels silently. |
+| INP-17 | **Pause gate for hardware drags.** When `beginInventoryDrag` is called for a locomotive or carriage item and the current game speed is > 0 (not paused), the drag must not begin: emit a toast "Pause the game to deploy trains" and return immediately. The interchange drag is exempt from this gate (placing an interchange does not affect moving trains and is safe at any speed). |
 
 ## Cancellation
 

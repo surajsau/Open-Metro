@@ -335,6 +335,12 @@ export class Interactions {
   // until release so the drop can land anywhere on the canvas.
   beginInventoryDrag(item: InventoryItem, e: { clientX: number; clientY: number }): void {
     if (!this.interactive || this.drag || !this.canvas) return;
+    // Locomotive and carriage drags are gated on pause (INP-17 / GD-42).
+    // Interchange drops are exempt — they don't affect moving trains.
+    if ((item === 'locomotive' || item === 'carriage') && this.store.state.speed > 0) {
+      this.store.addToast('Pause the game to deploy trains');
+      return;
+    }
     this.drag = { mode: 'inventory', item, cursor: this.worldPos(e), target: null };
     const move = (ev: PointerEvent) => {
       if (this.drag?.mode === 'inventory') {
