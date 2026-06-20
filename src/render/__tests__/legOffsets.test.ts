@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PARALLEL_GAP } from '../../game/constants';
 import { offsetPolyline } from '../../game/geometry';
 import type { Line, Station } from '../../game/types';
-import { computeLegOffsets, computeShiftedTermini, legKey } from '../legOffsets';
+import { computeLegOffsets, computeShiftedTermini, legIndexAtArcLength, legKey } from '../legOffsets';
 
 function stubLine(id: number, stations: number[], isLoop = false): Line {
   return { id, stations, isLoop, path: [], nodeS: [] };
@@ -125,5 +125,45 @@ describe('computeShiftedTermini', () => {
     expect(Math.abs(ys1)).toBeCloseTo(PARALLEL_GAP / 2, 6);
     // The two lines should land on opposite geometric sides
     expect(ys0 * ys1).toBeLessThan(0); // opposite signs
+  });
+});
+
+describe('legIndexAtArcLength', () => {
+  // nodeS = [0, 100, 200] means 3 stations: leg 0 spans [0,100], leg 1 spans [100,200]
+  it('returns 0 for s at the start of the first leg', () => {
+    expect(legIndexAtArcLength([0, 100, 200], 0, false)).toBe(0);
+  });
+
+  it('returns 0 for s in the middle of the first leg', () => {
+    expect(legIndexAtArcLength([0, 100, 200], 50, false)).toBe(0);
+  });
+
+  it('returns 1 when s is exactly at the second station', () => {
+    // At the junction, round to next leg (dwells at a station belong to the leg ahead)
+    expect(legIndexAtArcLength([0, 100, 200], 100, false)).toBe(1);
+  });
+
+  it('returns 1 for s in the middle of the second leg', () => {
+    expect(legIndexAtArcLength([0, 100, 200], 150, false)).toBe(1);
+  });
+
+  it('clamps to last valid leg for s at/beyond the end (non-loop)', () => {
+    expect(legIndexAtArcLength([0, 100, 200], 200, false)).toBe(1);
+    expect(legIndexAtArcLength([0, 100, 200], 250, false)).toBe(1);
+  });
+
+  it('handles single-leg line (2 stations)', () => {
+    expect(legIndexAtArcLength([0, 100], 60, false)).toBe(0);
+  });
+
+  it('for a loop, closing leg index is stations.length-1', () => {
+    // 3-station loop: nodeS=[0,100,200], total=300 (closing leg 200→300)
+    // leg 0: [0,100], leg 1: [100,200], leg 2 (closing): [200,300]
+    expect(legIndexAtArcLength([0, 100, 200], 250, true, 300)).toBe(2);
+  });
+
+  it('for a loop, s at start wraps to closing leg index range correctly', () => {
+    // s=0..100 is still leg 0
+    expect(legIndexAtArcLength([0, 100, 200], 50, true, 300)).toBe(0);
   });
 });
