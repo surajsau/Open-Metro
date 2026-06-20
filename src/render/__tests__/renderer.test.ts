@@ -146,3 +146,120 @@ describe('computeLegOffsets — correct station-pair identity', () => {
     expect(offsets.get(legKey(2, 0)) ?? 0).toBe(0);
   });
 });
+
+// Bug 5 regression: 3-line corridor center strand must get half-width.
+// The center strand gets offset=0 from computeLegOffsets (it IS stored in the map),
+// but the old `legOffset !== 0` width check wrongly assigned it LINE_WIDTH.
+// Fix: use offsets.has(legKey(...)) to distinguish "in parallel group" from "solo leg".
+describe('Bug 5 — center strand in 3-line group uses half-width', () => {
+  it('computeLegOffsets stores a map entry for ALL three members, including the center (offset=0)', () => {
+    // Three lines all sharing corridor {1,2}. Sorted by lineId: 0,1,2.
+    // Offsets: line 0 → -PARALLEL_GAP, line 1 → 0 (center), line 2 → +PARALLEL_GAP.
+    const line0 = stubLine(0, [1, 2]);
+    const line1 = stubLine(1, [1, 2]);
+    const line2 = stubLine(2, [1, 2]);
+    const offsets = computeLegOffsets([line0, line1, line2]);
+
+    // All three must have an entry in the map (including center with value 0).
+    expect(offsets.has(legKey(0, 0))).toBe(true);
+    expect(offsets.has(legKey(1, 0))).toBe(true);
+    expect(offsets.has(legKey(2, 0))).toBe(true);
+
+    // Center member (line1, idx=1 of 3) must have offset exactly 0.
+    expect(offsets.get(legKey(1, 0))).toBe(0);
+  });
+
+  it('center strand of a 3-line corridor should use half-width (offsets.has check)', () => {
+    const line0 = stubLine(0, [1, 2]);
+    const line1 = stubLine(1, [1, 2]);
+    const line2 = stubLine(2, [1, 2]);
+    const offsets = computeLegOffsets([line0, line1, line2]);
+
+    // Center member (line1): offset is 0 but IS in the parallel group.
+    const centerOffset = offsets.get(legKey(1, 0)) ?? 0;
+    const inParallelGroup = offsets.has(legKey(1, 0));
+
+    expect(centerOffset).toBe(0);          // offset is zero (center strand)
+    expect(inParallelGroup).toBe(true);    // but it IS in a parallel group
+
+    // Width decision must use offsets.has, NOT offset !== 0.
+    const strokeWidthCorrect = inParallelGroup ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
+    const strokeWidthWrong   = centerOffset !== 0 ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
+
+    expect(strokeWidthCorrect).toBe(LINE_WIDTH * PARALLEL_WIDTH_FACTOR); // correct: half-width
+    expect(strokeWidthWrong).toBe(LINE_WIDTH);                           // old bug: full-width
+  });
+
+  it('outer strands of a 3-line corridor also use half-width', () => {
+    const line0 = stubLine(0, [1, 2]);
+    const line1 = stubLine(1, [1, 2]);
+    const line2 = stubLine(2, [1, 2]);
+    const offsets = computeLegOffsets([line0, line1, line2]);
+
+    for (const lineId of [0, 2]) {
+      const inParallelGroup = offsets.has(legKey(lineId, 0));
+      expect(inParallelGroup).toBe(true);
+      const strokeWidth = inParallelGroup ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
+      expect(strokeWidth).toBe(LINE_WIDTH * PARALLEL_WIDTH_FACTOR);
+    }
+  });
+
+  it('solo leg (not in any parallel group) must keep full LINE_WIDTH via offsets.has', () => {
+    const line0 = stubLine(0, [1, 2]);
+    const offsets = computeLegOffsets([line0]);
+
+    const inParallelGroup = offsets.has(legKey(0, 0));
+    expect(inParallelGroup).toBe(false);
+
+    const strokeWidth = inParallelGroup ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
+    expect(strokeWidth).toBe(LINE_WIDTH);
+  });
+});
+
+// Bug 6 regression: PARALLEL_GAP changed from 12 to 8.
+// With LINE_WIDTH=8, PARALLEL_WIDTH_FACTOR=0.5 (strand=4px), PARALLEL_GAP=8:
+//   2-line corridor: strands at ±4, spans [-6,−2] and [+2,+6] → 4px gap ✓
+//   3-line corridor: strands at −8, 0, +8, spans [−10,−6],[−2,+2],[+6,+10] → 4px gaps ✓
+describe('Bug 6 — PARALLEL_GAP=8 produces correct spacing', () => {
+  it('PARALLEL_GAP equals 8', () => {
+    expect(PARALLEL_GAP).toBe(8);
+  });
+
+  it('2-line corridor strands are separated by exactly PARALLEL_GAP=8 center-to-center', () => {
+    const line0 = stubLine(0, [1, 2]);
+    const line1 = stubLine(1, [1, 2]);
+    const offsets = computeLegOffsets([line0, line1]);
+
+    const offset0 = offsets.get(legKey(0, 0))!;
+    const offset1 = offsets.get(legKey(1, 0))!;
+
+    expect(Math.abs(offset0 - offset1)).toBeCloseTo(PARALLEL_GAP, 6); // 8
+    expect(offset0 + offset1).toBeCloseTo(0, 6); // centered
+  });
+
+  it('3-line corridor strands are spaced PARALLEL_GAP=8 apart center-to-center', () => {
+    const line0 = stubLine(0, [1, 2]);
+    const line1 = stubLine(1, [1, 2]);
+    const line2 = stubLine(2, [1, 2]);
+    const offsets = computeLegOffsets([line0, line1, line2]);
+
+    const off0 = offsets.get(legKey(0, 0))!; // -PARALLEL_GAP
+    const off1 = offsets.get(legKey(1, 0))!; // 0 (center)
+    const off2 = offsets.get(legKey(2, 0))!; // +PARALLEL_GAP
+
+    expect(off1).toBeCloseTo(0, 6);
+    expect(Math.abs(off1 - off0)).toBeCloseTo(PARALLEL_GAP, 6); // 8
+    expect(Math.abs(off2 - off1)).toBeCloseTo(PARALLEL_GAP, 6); // 8
+
+    // total spread = 2 * PARALLEL_GAP = 16
+    expect(Math.abs(off2 - off0)).toBeCloseTo(2 * PARALLEL_GAP, 6);
+  });
+
+  it('strand half-width (4px) plus gap (4px) equals PARALLEL_GAP (8) — strands touch cleanly', () => {
+    const halfWidth = LINE_WIDTH * PARALLEL_WIDTH_FACTOR; // 8 * 0.5 = 4
+    const halfStrand = halfWidth / 2;                      // 2 (each side of center)
+    // gap between two adjacent strands = PARALLEL_GAP - 2*halfStrand
+    const gapBetweenStrands = PARALLEL_GAP - 2 * halfStrand;
+    expect(gapBetweenStrands).toBeCloseTo(halfWidth, 6); // 4px daylight gap equals strand width ✓
+  });
+});

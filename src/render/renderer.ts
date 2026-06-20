@@ -117,9 +117,9 @@ function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Ma
         strokePolyline(ctx, pts);
         ctx.restore();
       }
-      const legOffset = offsets.get(legKey(line.id, legIndex)) ?? 0;
+      const inParallelGroup = offsets.has(legKey(line.id, legIndex));
       ctx.strokeStyle = color;
-      ctx.lineWidth = legOffset !== 0 ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
+      ctx.lineWidth = inParallelGroup ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
       strokePolyline(ctx, pts);
     });
     // Pass the perpendicular-shifted terminus positions so tail stubs sit on the
