@@ -11,10 +11,10 @@ import {
   WATER,
   WORLD,
 } from '../game/constants';
-import { norm, octilinearPath, offsetPolyline, pointAtArcLength, polylineLength, sub } from '../game/geometry';
+import { norm, octilinearPath, pointAtArcLength, polylineLength, sub } from '../game/geometry';
 import type { GameState, Line, ShapeKind, Station, Vec } from '../game/types';
 import type { DragState } from '../input/dragState';
-import { computeLegOffsets, computeShiftedTermini, forEachLeg, legKey } from './legOffsets';
+import { computeLegOffsets, computeShiftedTermini, forEachLeg, legIndexAtArcLength, legKey } from './legOffsets';
 import { shapePath } from './shapes';
 
 export interface Viewport {
@@ -96,7 +96,13 @@ function legPoints(stations: Map<number, Station>, aId: number, bId: number, off
   const b = stations.get(bId);
   if (!a || !b) return null;
   const base = octilinearPath(a.pos, b.pos);
-  return offset === 0 ? base : offsetPolyline(base, offset);
+  if (offset === 0) return base;
+  // Constant lateral shift — perpendicular to the CANONICAL A→B corridor direction.
+  // Using canonical order (min-ID station → max-ID station) so the sign matches
+  // the offset computed by computeLegOffsets (which uses the same canonical order).
+  const canonDir = aId < bId ? norm(sub(b.pos, a.pos)) : norm(sub(a.pos, b.pos));
+  const perp: Vec = { x: -canonDir.y, y: canonDir.x };
+  return base.map(p => ({ x: p.x + perp.x * offset, y: p.y + perp.y * offset }));
 }
 
 function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Map<number, Station>): void {
@@ -308,7 +314,8 @@ function drawTrainBody(
   ctx.restore();
 }
 
-function drawTrains(ctx: CanvasRenderingContext2D, state: GameState): void {
+function drawTrains(ctx: CanvasRenderingContext2D, state: GameState, stations: Map<number, Station>): void {
+  const offsets = computeLegOffsets(state.lines);
   for (const train of state.trains) {
     const line = state.lines.find((l) => l.id === train.lineId);
     if (!line || line.path.length < 2) continue;
@@ -327,9 +334,24 @@ function drawTrains(ctx: CanvasRenderingContext2D, state: GameState): void {
       if (line.isLoop) s = ((s % total) + total) % total;
       else s = Math.max(0, Math.min(total, s));
       const { point, angle } = pointAtArcLength(line.path, s);
+      const legIdx = legIndexAtArcLength(line.nodeS, s, line.isLoop, total);
+      const legOffset = offsets.get(legKey(line.id, legIdx)) ?? 0;
+      let renderPos = point;
+      if (legOffset !== 0) {
+        const numStations = line.stations.length;
+        const aId = line.stations[legIdx];
+        const bId = (line.isLoop && legIdx === numStations - 1) ? line.stations[0] : line.stations[legIdx + 1];
+        const posA = stations.get(aId)?.pos;
+        const posB = stations.get(bId)?.pos;
+        if (posA && posB) {
+          const canonDir = aId < bId ? norm(sub(posB, posA)) : norm(sub(posA, posB));
+          const perp: Vec = { x: -canonDir.y, y: canonDir.x };
+          renderPos = { x: point.x + perp.x * legOffset, y: point.y + perp.y * legOffset };
+        }
+      }
       const unitRiders = riders.slice(u * 6, u * 6 + 6);
-      if (u === 0) drawTrainBody(ctx, point, angle, LOCO_LEN, 16, color, unitRiders);
-      else drawTrainBody(ctx, point, angle, CAR_LEN, 13, color, unitRiders);
+      if (u === 0) drawTrainBody(ctx, renderPos, angle, LOCO_LEN, 16, color, unitRiders);
+      else drawTrainBody(ctx, renderPos, angle, CAR_LEN, 13, color, unitRiders);
     }
   }
 }
@@ -406,7 +428,7 @@ export function renderFrame(
   drawRiver(ctx, state.city.rivers);
   drawLines(ctx, state, stations);
   if (drag) drawDragPreview(ctx, state, stations, drag);
-  drawTrains(ctx, state);
+  drawTrains(ctx, state, stations);
   drawStations(ctx, state);
   drawEffects(ctx, state);
 }

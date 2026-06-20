@@ -1,5 +1,5 @@
 import { PARALLEL_GAP } from '../game/constants';
-import { octilinearPath, offsetPolyline } from '../game/geometry';
+import { norm, octilinearPath, sub } from '../game/geometry';
 import type { Line, Station, Vec } from '../game/types';
 
 export const legKey = (lineId: number, legIndex: number): string => `${lineId}:${legIndex}`;
@@ -16,16 +16,17 @@ export function forEachLeg(line: Line, cb: (a: number, b: number, legIndex: numb
 }
 
 // Lines sharing the same unordered station pair get spread sideways so they
-// render as parallel strands. The returned offset is signed for the leg drawn
-// in the line's own direction; reversed legs get a negated sign so both end up
-// on consistent geometric sides.
+// render as parallel strands. The returned offset is relative to the canonical
+// corridor direction (min station ID → max station ID). The constant-shift
+// rendering functions (legPoints, computeShiftedTermini, drawTrains) all use
+// the same canonical direction, so no sign-flip is needed for reversed legs.
 export function computeLegOffsets(lines: Line[]): Map<string, number> {
-  const groups = new Map<string, { lineId: number; legIndex: number; reversed: boolean }[]>();
+  const groups = new Map<string, { lineId: number; legIndex: number }[]>();
   for (const line of lines) {
     forEachLeg(line, (a, b, legIndex) => {
       const key = a < b ? `${a}-${b}` : `${b}-${a}`;
       if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push({ lineId: line.id, legIndex, reversed: a > b });
+      groups.get(key)!.push({ lineId: line.id, legIndex });
     });
   }
 
@@ -35,7 +36,7 @@ export function computeLegOffsets(lines: Line[]): Map<string, number> {
     members.sort((p, q) => p.lineId - q.lineId || p.legIndex - q.legIndex);
     members.forEach((m, idx) => {
       const base = (idx - (members.length - 1) / 2) * PARALLEL_GAP;
-      offsets.set(legKey(m.lineId, m.legIndex), m.reversed ? -base : base);
+      offsets.set(legKey(m.lineId, m.legIndex), base);
     });
   }
   return offsets;
@@ -104,13 +105,23 @@ export function computeShiftedTermini(
   let tailStart: Vec = stTail1?.pos ?? { x: 0, y: 0 };
 
   if (stHead0 && stHead1 && headOffset !== 0) {
-    const shiftedPath = offsetPolyline(octilinearPath(stHead0.pos, stHead1.pos), headOffset);
-    headStart = shiftedPath[0];
+    const path = octilinearPath(stHead0.pos, stHead1.pos);
+    // Canonical direction: min-ID station → max-ID station (matches computeLegOffsets sign convention).
+    const [hA, hB] = line.stations[0] < line.stations[1]
+      ? [stHead0.pos, stHead1.pos] : [stHead1.pos, stHead0.pos];
+    const dir = norm(sub(hB, hA));
+    const perp: Vec = { x: -dir.y, y: dir.x };
+    headStart = { x: path[0].x + perp.x * headOffset, y: path[0].y + perp.y * headOffset };
   }
 
   if (stTail0 && stTail1 && tailOffset !== 0) {
-    const shiftedPath = offsetPolyline(octilinearPath(stTail0.pos, stTail1.pos), tailOffset);
-    tailStart = shiftedPath[shiftedPath.length - 1];
+    const path = octilinearPath(stTail0.pos, stTail1.pos);
+    const lastIdx = line.stations.length - 1;
+    const [tA, tB] = line.stations[lastIdx - 1] < line.stations[lastIdx]
+      ? [stTail0.pos, stTail1.pos] : [stTail1.pos, stTail0.pos];
+    const dir = norm(sub(tB, tA));
+    const perp: Vec = { x: -dir.y, y: dir.x };
+    tailStart = { x: path[path.length - 1].x + perp.x * tailOffset, y: path[path.length - 1].y + perp.y * tailOffset };
   }
 
   return { headStart, tailStart };
