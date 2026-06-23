@@ -17,4 +17,7 @@ export type DragState =
     }
   | { mode: 'insert'; lineId: number; legIndex: number; hoverStation: number | null; cursor: Vec; valid: boolean }
   | { mode: 'removeStation'; lineId: number; stationId: number; cursor: Vec; valid: boolean }
-  | { mode: 'inventory'; item: InventoryItem; cursor: Vec; target: DropTarget };
+  | { mode: 'inventory'; item: InventoryItem; cursor: Vec; target: DropTarget }
+  // Picking a deployed train off its line to re-drop on another (paused only).
+  // target resolves like a locomotive inventory drag — nearest line within 30u.
+  | { mode: 'pickUpTrain'; fromLineId: number; trainId: number; carriages: number; cursor: Vec; target: DropTarget };

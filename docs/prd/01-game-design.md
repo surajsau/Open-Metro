@@ -80,8 +80,9 @@ to keep every station below its overcrowding limit. Score = passengers delivered
 | GD-26 | Creating a line auto-deploys one locomotive if any are in stock (this happens regardless of pause state). More locomotives can be drag-dropped onto a line — but only while the game is paused (see GD-42). |
 | GD-27 | A train holds 6 passengers, +6 per attached carriage, max 4 carriages. A dropped carriage attaches to the target line's train with the fewest carriages. |
 | GD-28 | Trains run at constant speed (75 world-units/s), dwell at stations to exchange passengers one at a time (alighting before boarding), reverse at the termini of open lines, and circulate endlessly around loops. |
-| GD-29 | Hardware is never destroyed: line deletion refunds locomotives and carriages to inventory. Moving a deployed train between lines directly is out of scope for v1. |
+| GD-29 | Hardware is never destroyed: line deletion refunds locomotives and carriages to inventory, and picking a deployed train up off the canvas (GD-43) returns it — with its attached carriages — to inventory. Hardware lives either in inventory or on exactly one line. |
 | GD-42 | **Hardware deployment requires pause.** Dragging a locomotive or carriage from the inventory bar onto a line is only permitted when the game is paused (speed = 0). If the player begins an inventory drag while the game is running (speed > 0), the drag is rejected immediately and a toast reads "Pause the game to deploy trains". The carriage drop obeys the same gate. Line editing (GD-18) and auto-deploy on line creation (GD-26) are unaffected. |
+| GD-43 | **Pick up and re-deploy a deployed train.** While paused (speed = 0), clicking a deployed train sprite on the canvas picks it up — the locomotive plus its attached carriages return to inventory — and the same gesture drops it onto a line (its own or another), entering service there exactly as an inventory locomotive drop does ([TRN-12](05-transit-simulation.md#hardware-deployment)). Onboard passengers offload to the nearest station of the train's old line, exactly as line deletion handles them (GD-21). Releasing on empty canvas or a non-line target cancels and the train stays where it was. If the player clicks a deployed train while the game is running (speed > 0), nothing is picked up and a toast reads "Pause the game to deploy trains" — the same gate and string as GD-42. |
 
 ## Passengers & routing
 
@@ -124,7 +125,8 @@ to keep every station below its overcrowding limit. Score = passengers delivered
 | Drag a mid-line leg onto a free station | Insert the station into that leg |
 | Click a line chip, then drag one of its mid-line stations off the path | Remove the station (line heals around it) |
 | Selected chip's ⨯ | Delete the line |
-| Drag from inventory bar | Locomotive/carriage → onto a line; interchange → onto a station |
+| Drag from inventory bar | Locomotive/carriage → onto a line; interchange → onto a station (hardware requires pause) |
+| Click a deployed train, then drop on a line (paused only) | Pick the train up to inventory and re-deploy it onto a line |
 | Esc | Cancel the current drag |
 | Click empty canvas | Clear line selection |
 | HUD buttons | Pause / 1× / 2× |

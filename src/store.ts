@@ -1,6 +1,6 @@
 import { CITIES, cityById } from './game/cities';
 import { DAY_NAMES } from './game/constants';
-import { applyChain, applyInterchange, createLine, deleteLine, insertStation, removeStation } from './game/lines';
+import { applyChain, applyInterchange, createLine, deleteLine, insertStation, pickUpTrain, removeStation } from './game/lines';
 import { applyReward } from './game/rewards';
 import { recomputeRouting } from './game/routing';
 import { initialStations } from './game/spawn';
@@ -314,6 +314,24 @@ export class GameStore {
 
   dropInterchange(stationId: number): boolean {
     return this.reportResult(applyInterchange(this.state, stationId));
+  }
+
+  // Relocate a deployed train from one line to another (paused player action).
+  // Picks the train up (refund + offload), then re-deploys via the same paths a
+  // fresh inventory drop uses (addTrainToLine + addCarriageToLine) so the moved
+  // train is indistinguishable from a new one. Pickup refunds first, so the
+  // re-deploy always has stock; this whole op conserves hardware (TRN-14).
+  moveTrain(fromLineId: number, trainId: number, toLineId: number, dropPos?: Vec): boolean {
+    const picked = pickUpTrain(this.state, fromLineId, trainId);
+    if (!picked.ok) {
+      this.addToast(picked.reason);
+      this.notify();
+      return false;
+    }
+    addTrainToLine(this.state, toLineId, dropPos);
+    for (let i = 0; i < picked.carriages; i++) addCarriageToLine(this.state, toLineId);
+    this.notify();
+    return true;
   }
 }
 

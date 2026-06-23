@@ -67,8 +67,9 @@ pause/1×/2× work; runs are restartable across three cities with per-city best 
 
 ## Out of scope (v1) and roadmap
 
-Out of scope: audio, daily challenges, mobile touch ergonomics, moving deployed trains between
-lines, save/load of runs in progress, leaderboards, achievements.
+Out of scope: audio, daily challenges, mobile touch ergonomics, save/load of runs in progress,
+leaderboards, achievements. (Moving a deployed train between lines — picking it up off the
+canvas and re-dropping it while paused — is now in scope; see [GD-43](01-game-design.md#trains--carriages).)
 
 Roadmap candidates (from the repo README, not yet specced): multiplayer via WebRTC, custom
 city editor, mobile touch controls, sound and music, replay system. Each needs its own PRD

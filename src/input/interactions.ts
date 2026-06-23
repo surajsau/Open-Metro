@@ -1,5 +1,5 @@
-import { STATION_HIT_R } from '../game/constants';
-import { dist, nearestPointOnPolyline, octilinearPath } from '../game/geometry';
+import { STATION_HIT_R, TRAIN_HIT_R } from '../game/constants';
+import { dist, nearestPointOnPolyline, octilinearPath, pointAtArcLength, polylineLength } from '../game/geometry';
 import { freePaletteId, validateChain } from '../game/lines';
 import { countRiverCrossings } from '../game/river';
 import { tunnelsUsed } from '../game/lines';
@@ -40,6 +40,29 @@ export class Interactions {
       const d = dist(st.pos, p);
       if (d <= bestD) {
         best = st;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  // Deployed-train pick-up hit-test (INP-18). The train's world position is the
+  // locomotive body center, derived from its arc-length s on the line path —
+  // identical to what drawTrains renders. Nearest train within TRAIN_HIT_R wins.
+  private hitTrain(p: Vec): { lineId: number; trainId: number; carriages: number } | null {
+    let best: { lineId: number; trainId: number; carriages: number } | null = null;
+    let bestD = TRAIN_HIT_R;
+    for (const train of this.store.state.trains) {
+      const line = this.store.state.lines.find((l) => l.id === train.lineId);
+      if (!line || line.path.length < 2) continue;
+      const total = polylineLength(line.path);
+      let s = train.s;
+      if (line.isLoop) s = ((s % total) + total) % total;
+      else s = Math.max(0, Math.min(total, s));
+      const { point } = pointAtArcLength(line.path, s);
+      const d = dist(point, p);
+      if (d <= bestD) {
+        best = { lineId: train.lineId, trainId: train.id, carriages: train.carriages };
         bestD = d;
       }
     }
@@ -150,6 +173,27 @@ export class Interactions {
     const p = this.worldPos(e);
     const state = this.store.state;
 
+    // Deployed-train pick-up sits at the FRONT of the order (a train can sit on
+    // top of a leg). Resolved only while paused (INP-18/INP-19); pressing a
+    // train at speed > 0 toasts and falls through to the gestures below.
+    const train = this.hitTrain(p);
+    if (train) {
+      if (state.speed > 0) {
+        this.store.addToast('Pause the game to deploy trains');
+      } else {
+        this.drag = {
+          mode: 'pickUpTrain',
+          fromLineId: train.lineId,
+          trainId: train.trainId,
+          carriages: train.carriages,
+          cursor: p,
+          target: null,
+        };
+        this.canvas!.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
+
     const tail = this.hitTailCap(p);
     if (tail) {
       const line = state.lines.find((l) => l.id === tail.lineId)!;
@@ -201,6 +245,13 @@ export class Interactions {
     else if (this.drag.mode === 'insert') this.moveInsert(p);
     else if (this.drag.mode === 'removeStation') this.moveRemove(p);
     else if (this.drag.mode === 'inventory') this.moveInventory(p);
+    else if (this.drag.mode === 'pickUpTrain') this.movePickUp(p);
+  }
+
+  private movePickUp(p: Vec): void {
+    const drag = this.drag as DragState & { mode: 'pickUpTrain' };
+    const lineId = this.nearestLine(p);
+    drag.target = lineId !== null ? { kind: 'line', lineId } : null;
   }
 
   private moveRemove(p: Vec): void {
@@ -322,6 +373,12 @@ export class Interactions {
       if (drag.valid) this.store.commitRemoveStation(drag.lineId, drag.stationId);
     } else if (drag.mode === 'inventory') {
       this.dropInventory(drag, p);
+    } else if (drag.mode === 'pickUpTrain') {
+      // Release on a line commits the relocation; release on nothing cancels and
+      // the train stays untouched on its original line (INP-19).
+      if (drag.target && drag.target.kind === 'line') {
+        this.store.moveTrain(drag.fromLineId, drag.trainId, drag.target.lineId, p);
+      }
     }
   }
 
@@ -373,7 +430,9 @@ export class Interactions {
       this.canvas.style.cursor = 'default';
       return;
     }
-    if (this.hitTailCap(p)) this.canvas.style.cursor = 'grab';
+    // While paused, a deployed train is a pick-up target (INP-03 / INP-18).
+    if (this.store.state.speed === 0 && this.hitTrain(p)) this.canvas.style.cursor = 'grab';
+    else if (this.hitTailCap(p)) this.canvas.style.cursor = 'grab';
     else if (this.removalTarget(p)) this.canvas.style.cursor = 'grab';
     else if (this.hitStation(p)) this.canvas.style.cursor = 'crosshair';
     else if (this.hitLeg(p)) this.canvas.style.cursor = 'grab';

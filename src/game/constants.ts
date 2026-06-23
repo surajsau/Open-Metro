@@ -33,6 +33,10 @@ export const PARALLEL_WIDTH_FACTOR = 0.5; // stroke multiplier for legs shared b
 export const TAIL_LEN = 22;
 export const STATION_R = 11;
 export const STATION_HIT_R = 22;
+// Pick-up hit radius for a deployed train sprite (INP-18). The locomotive draws
+// 32 long × 16 high; its rendered half-extent along the long axis is 16, so 18
+// gives a forgiving grab footprint without overlapping neighbouring stations.
+export const TRAIN_HIT_R = 18;
 
 export const LINE_COLORS = ['#E32017', '#0070C0', '#EFB800', '#00843D', '#92278F', '#8A5A2B', '#00A3C8'] as const;
 export const INK = '#35342F';

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GameStore } from '../../store';
+import { makeStation } from './helpers';
 
 function stubLocalStorage(): Map<string, string> {
   const data = new Map<string, string>();
@@ -97,5 +98,71 @@ describe('GameStore', () => {
     const store = new GameStore(55);
     store.addToast('No tunnels available');
     expect(store.getSnapshot().toasts.map((t) => t.msg)).toContain('No tunnels available');
+  });
+
+  it('moveTrain relocates a deployed train to another line, conserving hardware', () => {
+    const store = new GameStore(61);
+    store.start();
+    const s = store.state;
+    s.stations.length = 0;
+    s.lines.length = 0;
+    s.trains.length = 0;
+    s.stations.push(
+      makeStation(1, 0, 0, 'circle'),
+      makeStation(2, 400, 0, 'circle'),
+      makeStation(3, 0, 300, 'square'),
+      makeStation(4, 400, 300, 'square'),
+    );
+    expect(store.commitCreate([1, 2], false)).toBe(true); // line A + auto train
+    expect(store.commitCreate([3, 4], false)).toBe(true); // line B + auto train
+    const lineA = s.lines[0];
+    const lineB = s.lines[1];
+    const train = s.trains.find((t) => t.lineId === lineA.id)!;
+
+    const totalLocos = () => s.inventory.locomotives + s.trains.length;
+    const before = totalLocos();
+
+    store.setSpeed(0); // paused — required, though moveTrain itself is the core op
+    const moved = store.moveTrain(lineA.id, train.id, lineB.id, { x: 200, y: 300 });
+
+    expect(moved).toBe(true);
+    expect(totalLocos()).toBe(before); // no loco created or destroyed
+    expect(s.trains.some((t) => t.lineId === lineB.id)).toBe(true);
+    expect(s.trains.filter((t) => t.lineId === lineA.id)).toHaveLength(0);
+  });
+
+  it('moveTrain re-attaches carriages onto the target line', () => {
+    const store = new GameStore(62);
+    store.start();
+    const s = store.state;
+    s.stations.length = 0;
+    s.lines.length = 0;
+    s.trains.length = 0;
+    s.stations.push(
+      makeStation(1, 0, 0, 'circle'),
+      makeStation(2, 400, 0, 'circle'),
+      makeStation(3, 0, 300, 'square'),
+      makeStation(4, 400, 300, 'square'),
+    );
+    // Line B is built WITHOUT an auto-train (no loco stock at the moment) so the
+    // relocated train is the only carriage candidate on it.
+    expect(store.commitCreate([1, 2], false)).toBe(true); // line A + auto train
+    const lineA = s.lines[0];
+    s.inventory.carriages = 5;
+    store.dropCarriage(lineA.id);
+    store.dropCarriage(lineA.id);
+    const train = s.trains.find((t) => t.lineId === lineA.id)!;
+    expect(train.carriages).toBe(2);
+    const locoStash = s.inventory.locomotives;
+    s.inventory.locomotives = 0; // line B auto-deploys no train
+    expect(store.commitCreate([3, 4], false)).toBe(true);
+    s.inventory.locomotives = locoStash;
+    const lineB = s.lines[1];
+    expect(s.trains.filter((t) => t.lineId === lineB.id)).toHaveLength(0);
+
+    store.moveTrain(lineA.id, train.id, lineB.id, { x: 200, y: 300 });
+
+    // The relocated train now runs on B carrying its 2 carriages.
+    expect(s.trains.some((t) => t.lineId === lineB.id && t.carriages === 2)).toBe(true);
   });
 });

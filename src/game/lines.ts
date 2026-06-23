@@ -162,23 +162,49 @@ export function applyInterchange(state: GameState, stationId: number): EditResul
   return { ok: true };
 }
 
+// Refund a removed train's hardware and offload its riders to the nearest
+// station of its OWN route (GD-21 / NET-14). Shared by line deletion (deleteLine)
+// and single-train pick-up (pickUpTrain) so there is exactly one offload routine.
+function refundAndOffloadTrain(state: GameState, line: Line, train: Train): void {
+  const lineStations = line.stations.map((id) => stationById(state, id)!).filter(Boolean);
+  state.inventory.locomotives++;
+  state.inventory.carriages += train.carriages;
+  if (train.passengers.length > 0 && lineStations.length > 0) {
+    const pos = line.path.length >= 2 ? pointAtArcLength(line.path, train.s).point : lineStations[0].pos;
+    let nearest = lineStations[0];
+    for (const st of lineStations) {
+      if (Math.hypot(st.pos.x - pos.x, st.pos.y - pos.y) < Math.hypot(nearest.pos.x - pos.x, nearest.pos.y - pos.y)) {
+        nearest = st;
+      }
+    }
+    nearest.waiting.push(...train.passengers);
+  }
+}
+
+export type PickUpResult = { ok: true; carriages: number } | { ok: false; reason: string };
+
+// Pick a single deployed train off its line (paused player action, TRN-15).
+// Hardware is refunded to inventory and onboard riders offload to the old route;
+// the LINE itself stays (unlike deleteLine). The returned carriage count lets the
+// caller re-attach the same number of carriages on the drop line so the moved
+// train is indistinguishable from a fresh inventory deploy. The train carries no
+// topology, so routing is unaffected — no recomputeRouting here.
+export function pickUpTrain(state: GameState, lineId: number, trainId: number): PickUpResult {
+  const line = lineById(state, lineId);
+  if (!line) return { ok: false, reason: 'Unknown line' };
+  const train = state.trains.find((t) => t.id === trainId && t.lineId === lineId);
+  if (!train) return { ok: false, reason: 'Unknown train' };
+  const carriages = train.carriages;
+  refundAndOffloadTrain(state, line, train);
+  state.trains = state.trains.filter((t) => t.id !== trainId);
+  return { ok: true, carriages };
+}
+
 export function deleteLine(state: GameState, lineId: number): void {
   const line = lineById(state, lineId);
   if (!line) return;
-  const lineStations = line.stations.map((id) => stationById(state, id)!);
   for (const train of state.trains.filter((t) => t.lineId === lineId)) {
-    state.inventory.locomotives++;
-    state.inventory.carriages += train.carriages;
-    if (train.passengers.length > 0 && lineStations.length > 0) {
-      const pos = line.path.length >= 2 ? pointAtArcLength(line.path, train.s).point : lineStations[0].pos;
-      let nearest = lineStations[0];
-      for (const st of lineStations) {
-        if (Math.hypot(st.pos.x - pos.x, st.pos.y - pos.y) < Math.hypot(nearest.pos.x - pos.x, nearest.pos.y - pos.y)) {
-          nearest = st;
-        }
-      }
-      nearest.waiting.push(...train.passengers);
-    }
+    refundAndOffloadTrain(state, line, train);
   }
   state.trains = state.trains.filter((t) => t.lineId !== lineId);
   state.lines = state.lines.filter((l) => l.id !== lineId);

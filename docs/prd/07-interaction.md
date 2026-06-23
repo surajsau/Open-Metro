@@ -26,6 +26,7 @@ release, so no rule logic exists in this layer.
 | `insert` | pointer-down on a line leg | `insertStation` |
 | `removeStation` | pointer-down on a mid-line station of the *selected* line | `removeStation` |
 | `inventory` | pointer-down on an inventory bar button (DOM) | `addTrainToLine` / `addCarriageToLine` / `applyInterchange` |
+| `pickUpTrain` | pointer-down on a deployed train sprite on the canvas (paused only) | `pickUpTrain` then `addTrainToLine` (+ re-attach carriages) on a line drop |
 
 ## Hit-testing
 
@@ -33,14 +34,15 @@ release, so no rule logic exists in this layer.
 |----|-------------|
 | INP-01 | All hit-testing happens in world coordinates (client → `toWorld`). Radii: station 22 (`STATION_HIT_R`), tail cap 16, line leg 11, hover-snap onto stations 26, drop targets 30. Nearest candidate wins within the radius. |
 | INP-02 | Leg hit-testing measures distance to the leg's true octilinear path via the shared `forEachLeg` enumeration — identical geometry to what is rendered, including loop closing legs. |
-| INP-03 | Idle hover communicates affordances via cursor: `grab` over tail caps, removal targets, and legs; `crosshair` over stations; `default` elsewhere and whenever interaction is disabled. |
+| INP-03 | Idle hover communicates affordances via cursor: `grab` over tail caps, removal targets, and legs; `crosshair` over stations; `default` elsewhere and whenever interaction is disabled. While paused, hovering a deployed train sprite also shows `grab` (it is a pick-up target — see INP-18). |
+| INP-18 | A deployed train sprite is a hit-test target with radius `TRAIN_HIT_R` (the train's drawn half-extent; use the rendered sprite footprint). Nearest train within the radius wins. Train hit-testing is resolved **only while paused** (see INP-19); at speed > 0 trains are not hit-test candidates and clicks fall through to the normal pointer-down order (INP-05). |
 
 ## Pointer-down priority
 
 | ID | Requirement |
 |----|-------------|
 | INP-04 | Canvas gestures require the game to be interactive: started, not game-over, no reward modal open. Only button 0 starts a drag; pointer capture holds the gesture. Inventory drags (locomotive, carriage) carry an additional gate: the game must be paused (speed = 0) — see INP-17. |
-| INP-05 | Pointer-down resolution order: **tail cap** (extend) → **removal target** (selected line's station; on non-loops the two endpoints are excluded — they remain extend/retract territory) → **station** (new line) → **leg** (insert) → empty canvas (clear line selection). |
+| INP-05 | Pointer-down resolution order: **deployed train** (pick up — only when paused, INP-18/INP-19) → **tail cap** (extend) → **removal target** (selected line's station; on non-loops the two endpoints are excluded — they remain extend/retract territory) → **station** (new line) → **leg** (insert) → empty canvas (clear line selection). The train check sits at the front of the order because a train can sit on top of a leg; resolving it first lets a paused player grab the train rather than the leg under it. |
 | INP-06 | Starting a new line with no free slot does not start a drag; it toasts "No lines available" immediately. Otherwise the pending line previews in the lowest free palette color ([NET-02](04-network-editing.md#line-model)). |
 
 ## Chain building (`newLine` and `extend`)
@@ -72,6 +74,7 @@ release, so no rule logic exists in this layer.
 | INP-14 | Inventory drags begin on DOM buttons (`beginInventoryDrag`) and are tracked with window-level listeners so the drop can land anywhere on the canvas; the ghost follows the cursor ([RDR-09](06-rendering.md#draw-order)). |
 | INP-15 | Targets resolve live: locomotive/carriage → nearest line path within 30 units; interchange → nearest non-interchange station within 30. Release on a target commits the matching store action; failures surface as toasts from the core's `EditResult.reason`. Release on nothing cancels silently. |
 | INP-17 | **Pause gate for hardware drags.** When `beginInventoryDrag` is called for a locomotive or carriage item and the current game speed is > 0 (not paused), the drag must not begin: emit a toast "Pause the game to deploy trains" and return immediately. The interchange drag is exempt from this gate (placing an interchange does not affect moving trains and is safe at any speed). |
+| INP-19 | **Pause gate for train pick-up.** A `pickUpTrain` drag may begin only when the game is paused (speed = 0). When the player presses on a deployed train while speed > 0, no drag begins and a toast "Pause the game to deploy trains" fires (same string as INP-17/GD-42); the press otherwise falls through to the normal pointer-down order (INP-05) so other gestures still work at speed. While the pick-up drag is live, a ghost of the train follows the cursor; targets resolve like a locomotive inventory drag — nearest line path within 30 units ([INP-15](#inventory-drags)). Release on a line commits the re-deploy; release on nothing cancels and the train is left untouched on its original line. Escape / `pointercancel` cancel with no state change (INP-16). |
 
 ## Cancellation
 

@@ -320,7 +320,28 @@ function drawDragPreview(
     ctx.restore();
   } else if (drag.mode === 'inventory') {
     drawInventoryGhost(ctx, drag);
+  } else if (drag.mode === 'pickUpTrain') {
+    drawPickUpGhost(ctx, drag);
   }
+}
+
+// Ghost for a deployed train being relocated (RDR-09 / INP-19). Mirrors the
+// locomotive inventory ghost; carriages trail behind to read as the same train.
+function drawPickUpGhost(ctx: CanvasRenderingContext2D, drag: DragState & { mode: 'pickUpTrain' }): void {
+  ctx.save();
+  ctx.translate(drag.cursor.x, drag.cursor.y);
+  ctx.globalAlpha = drag.target ? 0.95 : 0.45;
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.roundRect(-17, -9, 34, 18, 5);
+  ctx.fill();
+  for (let c = 0; c < drag.carriages; c++) {
+    const x = 20 + c * 16;
+    ctx.beginPath();
+    ctx.roundRect(x - 14, -7, 28, 14, 4);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawInventoryGhost(ctx: CanvasRenderingContext2D, drag: DragState & { mode: 'inventory' }): void {
