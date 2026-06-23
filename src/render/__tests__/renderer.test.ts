@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PARALLEL_GAP, PARALLEL_WIDTH_FACTOR, LINE_WIDTH } from '../../game/constants';
-import { octilinearPath, offsetPolyline, pointAtArcLength, polylineLength } from '../../game/geometry';
-import type { Line, Station } from '../../game/types';
+import { norm, octilinearPath, pointAtArcLength, polylineLength, sub } from '../../game/geometry';
+import type { Line, Station, Vec } from '../../game/types';
 import { computeLegOffsets, legIndexAtArcLength, legKey } from '../legOffsets';
 
 function stubLine(id: number, stations: number[], isLoop = false): Line {
@@ -264,36 +264,52 @@ describe('Bug 6 — PARALLEL_GAP=8 produces correct spacing', () => {
   });
 });
 
-// Fix A: drawLines groups consecutive same-offset legs and applies offsetPolyline to
-// the full group path. This gives continuous miter joins at intermediate stations and
-// eliminates the per-leg junction diamonds.
-describe('Fix A — group-based offsetPolyline rendering eliminates junction diamonds', () => {
-  it('per-leg offsetPolyline produces a DISCONTINUOUS junction at a right-angle corner', () => {
-    // Two legs: horizontal A→B then vertical B→C.
-    // Shifting each leg independently leaves a visible gap between the end of leg 0 and
-    // the start of leg 1 — the root cause of the "diamond" artifact.
-    const A = { x: 0, y: 0 }, B = { x: 100, y: 0 }, C = { x: 100, y: 100 };
-    const offset = 4;
-    const shifted0 = offsetPolyline([A, B], offset);
-    const shifted1 = offsetPolyline([B, C], offset);
-    // Leg 0 end is (100, 4). Leg 1 start is (96, 0). Different → visible gap.
-    const gap = Math.hypot(
-      shifted0[shifted0.length - 1].x - shifted1[0].x,
-      shifted0[shifted0.length - 1].y - shifted1[0].y,
-    );
-    expect(gap).toBeGreaterThan(1);
+// Fix A: drawLines shifts each leg rigidly along the CANONICAL corridor perpendicular
+// (min-ID → max-ID), not the traversal-derived normal. This keeps the offset on a
+// consistent world-space side regardless of which direction a line traverses the
+// corridor, so two opposite-direction lines spread to OPPOSITE strands (visible gap)
+// instead of collapsing onto the same side.
+describe('Fix A — canonical-perpendicular offset gives consistent world-side spacing', () => {
+  // Mirror of renderer's canonicalPerp: perpendicular to min-ID → max-ID direction.
+  function canonPerp(posA: Vec, posB: Vec, aId: number, bId: number): Vec {
+    const lo = aId <= bId ? posA : posB;
+    const hi = aId <= bId ? posB : posA;
+    const dir = norm(sub(hi, lo));
+    return { x: -dir.y, y: dir.x };
+  }
+
+  it('opposite-direction legs on the same corridor land on OPPOSITE geometric sides', () => {
+    // Corridor {1,2}, horizontal: station 1 at (0,0), station 2 at (100,0).
+    // Line 0 draws 1→2 with offset -4; line 1 draws 2→1 with offset +4.
+    const p1 = { x: 0, y: 0 }, p2 = { x: 100, y: 0 };
+    // Line 0 leg (aId=1, bId=2): canonical perp uses 1→2.
+    const perp0 = canonPerp(p1, p2, 1, 2);
+    // Line 1 leg (aId=2, bId=1): canonical perp STILL uses 1→2 (min→max) — same vector.
+    const perp1 = canonPerp(p2, p1, 2, 1);
+    expect(perp1.x).toBeCloseTo(perp0.x, 6);
+    expect(perp1.y).toBeCloseTo(perp0.y, 6);
+
+    // Shift a sample point on the corridor by each line's offset.
+    const mid = { x: 50, y: 0 };
+    const y0 = mid.y + perp0.y * -4; // line 0
+    const y1 = mid.y + perp1.y * +4; // line 1
+    expect(y0 * y1).toBeLessThan(0);              // opposite sides
+    expect(Math.abs(y0 - y1)).toBeCloseTo(8, 6);  // separated by PARALLEL_GAP
   });
 
-  it('full-path offsetPolyline produces a CONTINUOUS junction at the same right-angle corner', () => {
-    // Concatenating the two legs into one polyline and calling offsetPolyline once
-    // produces a single miter point — no gap, no diamond.
-    const A = { x: 0, y: 0 }, B = { x: 100, y: 0 }, C = { x: 100, y: 100 };
-    const offset = 4;
-    const shifted = offsetPolyline([A, B, C], offset);
-    expect(shifted.length).toBe(3);
-    // Miter at B: intersection of lines through (100,4) and (96,0) — lands at (96,4).
-    expect(shifted[1].x).toBeCloseTo(96, 5);
-    expect(shifted[1].y).toBeCloseTo(4, 5);
+  it('rigid canonical shift keeps every point of a bent leg perfectly parallel (no corner artifact)', () => {
+    // Bent leg A=(0,0) → elbow → B=(100,50). Rigid translation by perp*offset moves
+    // every point by the same vector → identical shape, exact parallel.
+    const A = { x: 0, y: 0 }, B = { x: 100, y: 50 };
+    const base = octilinearPath(A, B);
+    const perp = canonPerp(A, B, 1, 2);
+    const offset = PARALLEL_GAP / 2;
+    const shifted = base.map((p) => ({ x: p.x + perp.x * offset, y: p.y + perp.y * offset }));
+    // Same displacement for every point.
+    for (let k = 0; k < base.length; k++) {
+      expect(shifted[k].x - base[k].x).toBeCloseTo(perp.x * offset, 6);
+      expect(shifted[k].y - base[k].y).toBeCloseTo(perp.y * offset, 6);
+    }
   });
 
   it('legs with different (offset, inParallel) pairs belong to separate groups', () => {
@@ -304,6 +320,38 @@ describe('Fix A — group-based offsetPolyline rendering eliminates junction dia
     const offsets = computeLegOffsets([lineA, lineB]);
     expect(offsets.has(legKey(0, 0))).toBe(true);   // leg 0 is parallel
     expect(offsets.has(legKey(0, 1))).toBe(false);  // leg 1 is solo — different group
+  });
+
+  it('octilinearPath is NOT symmetric — forward and reverse traversal give different elbows', () => {
+    // This is the root cause of the parallelogram: same two stations, opposite draw
+    // direction → different base shape. Documents why canonicalisation is required.
+    const A = { x: 0, y: 0 }, B = { x: 100, y: 50 };
+    const fwd = octilinearPath(A, B);
+    const rev = octilinearPath(B, A);
+    expect(fwd.length).toBe(3);
+    expect(rev.length).toBe(3);
+    // Forward elbow is at (50,50); reverse elbow is at (50,0) — different shapes.
+    expect(fwd[1].x).toBeCloseTo(50, 6);
+    expect(fwd[1].y).toBeCloseTo(50, 6);
+    expect(rev[1].x).toBeCloseTo(50, 6);
+    expect(rev[1].y).toBeCloseTo(0, 6);
+  });
+
+  it('canonical leg geometry is identical regardless of traversal direction', () => {
+    // legPoints canonicalises on station ID: compute min-ID→max-ID, reverse for traversal.
+    // A line drawn 1→2 and a line drawn 2→1 must trace the SAME polyline (point-for-point
+    // when read in the same spatial order), so ±offset spreads them into true parallels.
+    const A = { x: 0, y: 0 }, B = { x: 100, y: 50 };
+    // Emulate legPoints' canonicalisation (aId <= bId ? oct(a,b) : oct(b,a).reverse()).
+    const forwardLine = octilinearPath(A, B);                 // leg drawn 1→2
+    const reverseLine = octilinearPath(A, B).slice().reverse(); // leg drawn 2→1, canonicalised then reversed for traversal
+    // Read both in spatial 1→2 order: reverseLine reversed back equals forwardLine.
+    const reverseSpatial = reverseLine.slice().reverse();
+    expect(reverseSpatial.length).toBe(forwardLine.length);
+    for (let k = 0; k < forwardLine.length; k++) {
+      expect(reverseSpatial[k].x).toBeCloseTo(forwardLine[k].x, 6);
+      expect(reverseSpatial[k].y).toBeCloseTo(forwardLine[k].y, 6);
+    }
   });
 
   it('all legs of a line in the same corridor form a single group path', () => {
@@ -319,49 +367,71 @@ describe('Fix A — group-based offsetPolyline rendering eliminates junction dia
   });
 });
 
-// Fix C: drawTrains positions each unit by applying offsetPolyline to the current
-// leg's path and sampling it at the local arc-length. This correctly handles elbow
-// points within a leg and places trains on the right colored strand.
-describe('Fix C — train position uses offsetPolyline on leg path', () => {
+// Fix C: drawTrains positions each unit by rigidly translating the canonical leg
+// path along the canonical perpendicular, then sampling at the local arc-length.
+// This keeps trains on the same strand the line is drawn on, on a world-consistent
+// side regardless of traversal direction.
+describe('Fix C — train position uses canonical perpendicular shift on leg path', () => {
   function stubStation(id: number, x: number, y: number): Station {
     return { id, pos: { x, y }, shape: 'circle', isInterchange: false, waiting: [], gauge: 0, spawnTimer: 0, bornAt: 0 };
   }
 
-  it('for a straight horizontal leg, offsetPolyline shifts the sampled point perpendicular to the corridor', () => {
-    // A=(0,0)→B=(200,0). offsetPolyline with offset=4 shifts all y by +4.
-    // A train at local arc-length 100 should render at (100, 4).
+  // Mirror of renderer's canonicalPerp.
+  function canonPerp(posA: Vec, posB: Vec, aId: number, bId: number): Vec {
+    const lo = aId <= bId ? posA : posB;
+    const hi = aId <= bId ? posB : posA;
+    const dir = norm(sub(hi, lo));
+    return { x: -dir.y, y: dir.x };
+  }
+
+  it('for a straight horizontal leg, canonical shift moves the sampled point perpendicular to the corridor', () => {
     const stA = stubStation(1, 0, 0);
     const stB = stubStation(2, 200, 0);
     const legPath = octilinearPath(stA.pos, stB.pos);
     const legOffset = 4;
-    const shiftedPath = offsetPolyline(legPath, legOffset);
+    const perp = canonPerp(stA.pos, stB.pos, 1, 2);
+    const shiftedPath = legPath.map((p) => ({ x: p.x + perp.x * legOffset, y: p.y + perp.y * legOffset }));
     const { point } = pointAtArcLength(shiftedPath, 100);
     expect(point.x).toBeCloseTo(100, 5);
     expect(point.y).toBeCloseTo(4, 5);
   });
 
-  it('for a bent leg, offsetPolyline gives correct position past the elbow', () => {
-    // A=(0,0)→B=(100,100): octilinear path is diagonal (0,0)→(100,100).
-    // A=(0,0)→B=(200,100): path is diagonal (0,0)→(100,100) then horizontal (100,100)→(200,100).
+  it('a train on a leg traversed backwards rides the SAME world-side as the forward line', () => {
+    // Corridor {1,2} horizontal. Forward line offset -4, reverse line offset +4.
+    // Both must end up on opposite world sides (gap), not collapsed together.
+    const stA = stubStation(1, 0, 0);
+    const stB = stubStation(2, 200, 0);
+    // Forward train (leg aId=1,bId=2, offset -4):
+    const perpF = canonPerp(stA.pos, stB.pos, 1, 2);
+    const yF = 0 + perpF.y * -4;
+    // Reverse train (leg aId=2,bId=1, offset +4): canonical perp is identical.
+    const perpR = canonPerp(stB.pos, stA.pos, 2, 1);
+    const yR = 0 + perpR.y * +4;
+    expect(yF * yR).toBeLessThan(0);            // opposite sides
+    expect(Math.abs(yF - yR)).toBeCloseTo(8, 6); // separated by PARALLEL_GAP
+  });
+
+  it('for a bent leg, canonical shift gives correct parallel position past the elbow', () => {
     const stA = stubStation(1, 0, 0);
     const stB = stubStation(2, 200, 100);
     const legPath = octilinearPath(stA.pos, stB.pos);
     expect(legPath.length).toBe(3); // has elbow
     const legOffset = PARALLEL_GAP / 2;
-    const shiftedPath = offsetPolyline(legPath, legOffset);
-    // Sampling somewhere on the straight segment past the elbow should give a
-    // y-offset of legOffset (the horizontal segment is shifted up by legOffset).
-    const localS = polylineLength(legPath) * 0.9; // well past the elbow
+    const perp = canonPerp(stA.pos, stB.pos, 1, 2);
+    const shiftedPath = legPath.map((p) => ({ x: p.x + perp.x * legOffset, y: p.y + perp.y * legOffset }));
+    // Every point is displaced by exactly perp*legOffset (rigid, parallel).
+    const localS = polylineLength(legPath) * 0.9;
     const { point } = pointAtArcLength(shiftedPath, localS);
-    expect(point.y).toBeCloseTo(100 + legOffset, 3);
+    const { point: basePoint } = pointAtArcLength(legPath, localS);
+    expect(point.x - basePoint.x).toBeCloseTo(perp.x * legOffset, 4);
+    expect(point.y - basePoint.y).toBeCloseTo(perp.y * legOffset, 4);
   });
 
   it('legOffset=0 leaves train at the center path position', () => {
     const stA = stubStation(1, 0, 0);
     const stB = stubStation(2, 200, 0);
     const legPath = octilinearPath(stA.pos, stB.pos);
-    const shiftedPath = offsetPolyline(legPath, 0);
-    const { point } = pointAtArcLength(shiftedPath, 100);
+    const { point } = pointAtArcLength(legPath, 100);
     expect(point.x).toBeCloseTo(100, 5);
     expect(point.y).toBeCloseTo(0, 5);
   });

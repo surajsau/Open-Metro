@@ -11,7 +11,7 @@ import {
   WATER,
   WORLD,
 } from '../game/constants';
-import { norm, octilinearPath, offsetPolyline, pointAtArcLength, polylineLength, sub } from '../game/geometry';
+import { norm, octilinearPath, pointAtArcLength, polylineLength, sub } from '../game/geometry';
 import type { GameState, Line, ShapeKind, Station, Vec } from '../game/types';
 import type { DragState } from '../input/dragState';
 import { computeLegOffsets, computeShiftedTermini, forEachLeg, legIndexAtArcLength, legKey } from './legOffsets';
@@ -91,30 +91,60 @@ function drawRiver(ctx: CanvasRenderingContext2D, rivers: Vec[][]): void {
   }
 }
 
+// octilinearPath is NOT symmetric — it places the elbow near its first argument,
+// so octilinearPath(A,B) and octilinearPath(B,A) trace different polylines. If two
+// lines share a corridor but were drawn in opposite directions, rendering each in
+// its own traversal order produces two mismatched shapes (a parallelogram) instead
+// of parallel strands. Canonicalising on station ID (always compute min-ID → max-ID,
+// then reverse for traversal) guarantees both lines use identical base geometry.
 function legPoints(stations: Map<number, Station>, aId: number, bId: number): Vec[] | null {
   const a = stations.get(aId);
   const b = stations.get(bId);
   if (!a || !b) return null;
-  return octilinearPath(a.pos, b.pos);
+  if (aId <= bId) return octilinearPath(a.pos, b.pos);
+  return octilinearPath(b.pos, a.pos).reverse();
 }
 
-// Concatenate octilinear paths for a run of consecutive legs into one polyline,
-// deduplicating the shared station point at each junction.
-function buildConcatPath(
+// Perpendicular to the CANONICAL corridor direction (min-ID station → max-ID station).
+// This is fixed in world space regardless of which way a line traverses the corridor,
+// so a positive vs negative offset always lands on opposite geometric sides — two
+// lines sharing the corridor in any direction spread to opposite strands.
+function canonicalPerp(stations: Map<number, Station>, aId: number, bId: number): Vec | null {
+  const lo = stations.get(Math.min(aId, bId));
+  const hi = stations.get(Math.max(aId, bId));
+  if (!lo || !hi) return null;
+  const dir = norm(sub(hi.pos, lo.pos));
+  return { x: -dir.y, y: dir.x };
+}
+
+// Build a line's strand for a run of consecutive legs, rigidly translating each leg
+// by offset along the canonical perpendicular. The rigid translation keeps each leg
+// perfectly parallel to the center route (no corner miter artifacts), and the small
+// connector the polyline draws between adjacent shifted legs sits at the shared
+// station dot — matching how subway maps bend lines at stations.
+function buildOffsetGroupPath(
   stations: Map<number, Station>,
   legs: Array<{ aId: number; bId: number }>,
+  offset: number,
 ): Vec[] | null {
-  const paths: Vec[][] = [];
+  const out: Vec[] = [];
   for (const { aId, bId } of legs) {
-    const a = stations.get(aId);
-    const b = stations.get(bId);
-    if (!a || !b) return null;
-    paths.push(octilinearPath(a.pos, b.pos));
+    const pts = legPoints(stations, aId, bId);
+    if (!pts) return null;
+    let shifted = pts;
+    if (offset !== 0) {
+      const perp = canonicalPerp(stations, aId, bId);
+      if (perp) shifted = pts.map((p) => ({ x: p.x + perp.x * offset, y: p.y + perp.y * offset }));
+    }
+    // Drop the duplicated junction point when this leg starts exactly where the
+    // previous one ended (no offset jog); otherwise keep both to draw the connector.
+    const startAt = out.length > 0
+      && Math.abs(out[out.length - 1].x - shifted[0].x) < 1e-6
+      && Math.abs(out[out.length - 1].y - shifted[0].y) < 1e-6
+      ? 1 : 0;
+    for (let i = startAt; i < shifted.length; i++) out.push(shifted[i]);
   }
-  if (paths.length === 0) return null;
-  const out: Vec[] = [...paths[0]];
-  for (let i = 1; i < paths.length; i++) out.push(...paths[i].slice(1));
-  return out;
+  return out.length > 0 ? out : null;
 }
 
 function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Map<number, Station>): void {
@@ -143,10 +173,8 @@ function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Ma
       while (i < legInfos.length && legInfos[i].offset === offset && legInfos[i].inParallel === inParallel) i++;
       const group = legInfos.slice(start, i);
 
-      const base = buildConcatPath(stations, group);
-      if (!base) continue;
-
-      const pts = offset !== 0 ? offsetPolyline(base, offset) : base;
+      const pts = buildOffsetGroupPath(stations, group, offset);
+      if (!pts) continue;
 
       if (selected) {
         ctx.save();
@@ -376,11 +404,15 @@ function drawTrains(ctx: CanvasRenderingContext2D, state: GameState, stations: M
       let renderPos: Vec;
       let renderAngle: number;
 
-      if (stA && stB) {
-        // Apply offsetPolyline to the current leg's path so the train follows the
-        // shifted strand — including correct perpendicular shift at elbow points.
-        const legPath = octilinearPath(stA.pos, stB.pos);
-        const shiftedPath = legOffset !== 0 ? offsetPolyline(legPath, legOffset) : legPath;
+      const legPath = stA && stB ? legPoints(stations, aId, bId) : null;
+      if (legPath) {
+        // Rigidly translate the (canonical) leg path along the canonical perpendicular
+        // so the train rides the same strand the line is drawn on.
+        let shiftedPath = legPath;
+        if (legOffset !== 0) {
+          const perp = canonicalPerp(stations, aId, bId);
+          if (perp) shiftedPath = legPath.map((p) => ({ x: p.x + perp.x * legOffset, y: p.y + perp.y * legOffset }));
+        }
         const localS = s - line.nodeS[legIdx];
         ({ point: renderPos, angle: renderAngle } = pointAtArcLength(shiftedPath, localS));
       } else {
