@@ -11,7 +11,7 @@ import {
   WATER,
   WORLD,
 } from '../game/constants';
-import { norm, octilinearPath, pointAtArcLength, polylineLength, sub } from '../game/geometry';
+import { norm, octilinearPath, offsetPolyline, pointAtArcLength, polylineLength, sub } from '../game/geometry';
 import type { GameState, Line, ShapeKind, Station, Vec } from '../game/types';
 import type { DragState } from '../input/dragState';
 import { computeLegOffsets, computeShiftedTermini, forEachLeg, legIndexAtArcLength, legKey } from './legOffsets';
@@ -91,18 +91,30 @@ function drawRiver(ctx: CanvasRenderingContext2D, rivers: Vec[][]): void {
   }
 }
 
-function legPoints(stations: Map<number, Station>, aId: number, bId: number, offset: number): Vec[] | null {
+function legPoints(stations: Map<number, Station>, aId: number, bId: number): Vec[] | null {
   const a = stations.get(aId);
   const b = stations.get(bId);
   if (!a || !b) return null;
-  const base = octilinearPath(a.pos, b.pos);
-  if (offset === 0) return base;
-  // Constant lateral shift — perpendicular to the CANONICAL A→B corridor direction.
-  // Using canonical order (min-ID station → max-ID station) so the sign matches
-  // the offset computed by computeLegOffsets (which uses the same canonical order).
-  const canonDir = aId < bId ? norm(sub(b.pos, a.pos)) : norm(sub(a.pos, b.pos));
-  const perp: Vec = { x: -canonDir.y, y: canonDir.x };
-  return base.map(p => ({ x: p.x + perp.x * offset, y: p.y + perp.y * offset }));
+  return octilinearPath(a.pos, b.pos);
+}
+
+// Concatenate octilinear paths for a run of consecutive legs into one polyline,
+// deduplicating the shared station point at each junction.
+function buildConcatPath(
+  stations: Map<number, Station>,
+  legs: Array<{ aId: number; bId: number }>,
+): Vec[] | null {
+  const paths: Vec[][] = [];
+  for (const { aId, bId } of legs) {
+    const a = stations.get(aId);
+    const b = stations.get(bId);
+    if (!a || !b) return null;
+    paths.push(octilinearPath(a.pos, b.pos));
+  }
+  if (paths.length === 0) return null;
+  const out: Vec[] = [...paths[0]];
+  for (let i = 1; i < paths.length; i++) out.push(...paths[i].slice(1));
+  return out;
 }
 
 function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Map<number, Station>): void {
@@ -112,9 +124,30 @@ function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Ma
   for (const line of state.lines) {
     const color = LINE_COLORS[line.id];
     const selected = state.selectedLine === line.id;
+
+    // Collect per-leg metadata so we can group consecutive legs with the same
+    // offset and parallel-group membership into a single draw call.
+    const legInfos: Array<{ aId: number; bId: number; offset: number; inParallel: boolean }> = [];
     forEachLeg(line, (aId, bId, legIndex) => {
-      const pts = legPoints(stations, aId, bId, offsets.get(legKey(line.id, legIndex)) ?? 0);
-      if (!pts) return;
+      const k = legKey(line.id, legIndex);
+      legInfos.push({ aId, bId, offset: offsets.get(k) ?? 0, inParallel: offsets.has(k) });
+    });
+
+    // Render each contiguous group as one offsetPolyline call on the full group
+    // path. This gives proper miter joins at intermediate stations and eliminates
+    // the per-leg junction diamonds that arise when each leg is shifted independently.
+    let i = 0;
+    while (i < legInfos.length) {
+      const { offset, inParallel } = legInfos[i];
+      const start = i;
+      while (i < legInfos.length && legInfos[i].offset === offset && legInfos[i].inParallel === inParallel) i++;
+      const group = legInfos.slice(start, i);
+
+      const base = buildConcatPath(stations, group);
+      if (!base) continue;
+
+      const pts = offset !== 0 ? offsetPolyline(base, offset) : base;
+
       if (selected) {
         ctx.save();
         ctx.strokeStyle = color;
@@ -123,13 +156,11 @@ function drawLines(ctx: CanvasRenderingContext2D, state: GameState, stations: Ma
         strokePolyline(ctx, pts);
         ctx.restore();
       }
-      const inParallelGroup = offsets.has(legKey(line.id, legIndex));
       ctx.strokeStyle = color;
-      ctx.lineWidth = inParallelGroup ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
+      ctx.lineWidth = inParallel ? LINE_WIDTH * PARALLEL_WIDTH_FACTOR : LINE_WIDTH;
       strokePolyline(ctx, pts);
-    });
-    // Pass the perpendicular-shifted terminus positions so tail stubs sit on the
-    // correct strand rather than converging at the unshifted center (RDR-06).
+    }
+
     const termini = computeShiftedTermini(line, offsets, stations);
     drawTails(ctx, line, color, termini?.headStart, termini?.tailStart);
   }
@@ -195,7 +226,7 @@ function drawChainPreview(
   ctx.strokeStyle = color;
   ctx.lineWidth = LINE_WIDTH;
   for (let i = 1; i < chain.length; i++) {
-    const pts = legPoints(stations, chain[i - 1], chain[i], 0);
+    const pts = legPoints(stations, chain[i - 1], chain[i]);
     if (pts) strokePolyline(ctx, pts);
   }
   ctx.save();
@@ -326,32 +357,39 @@ function drawTrains(ctx: CanvasRenderingContext2D, state: GameState, stations: M
     const LOCO_LEN = 32;
     const CAR_LEN = 26;
     const COUPLING = 3;
-    let back = 0; // arc-length from the locomotive's center to this unit's center
+    let back = 0;
     for (let u = 0; u < units; u++) {
       if (u === 1) back += (LOCO_LEN + CAR_LEN) / 2 + COUPLING;
       else if (u > 1) back += CAR_LEN + COUPLING;
       let s = train.s - train.dir * back;
       if (line.isLoop) s = ((s % total) + total) % total;
       else s = Math.max(0, Math.min(total, s));
-      const { point, angle } = pointAtArcLength(line.path, s);
+
       const legIdx = legIndexAtArcLength(line.nodeS, s, line.isLoop, total);
       const legOffset = offsets.get(legKey(line.id, legIdx)) ?? 0;
-      let renderPos = point;
-      if (legOffset !== 0) {
-        const numStations = line.stations.length;
-        const aId = line.stations[legIdx];
-        const bId = (line.isLoop && legIdx === numStations - 1) ? line.stations[0] : line.stations[legIdx + 1];
-        const posA = stations.get(aId)?.pos;
-        const posB = stations.get(bId)?.pos;
-        if (posA && posB) {
-          const canonDir = aId < bId ? norm(sub(posB, posA)) : norm(sub(posA, posB));
-          const perp: Vec = { x: -canonDir.y, y: canonDir.x };
-          renderPos = { x: point.x + perp.x * legOffset, y: point.y + perp.y * legOffset };
-        }
+      const numStations = line.stations.length;
+      const aId = line.stations[legIdx];
+      const bId = line.isLoop && legIdx === numStations - 1 ? line.stations[0] : line.stations[legIdx + 1];
+      const stA = stations.get(aId);
+      const stB = stations.get(bId);
+
+      let renderPos: Vec;
+      let renderAngle: number;
+
+      if (stA && stB) {
+        // Apply offsetPolyline to the current leg's path so the train follows the
+        // shifted strand — including correct perpendicular shift at elbow points.
+        const legPath = octilinearPath(stA.pos, stB.pos);
+        const shiftedPath = legOffset !== 0 ? offsetPolyline(legPath, legOffset) : legPath;
+        const localS = s - line.nodeS[legIdx];
+        ({ point: renderPos, angle: renderAngle } = pointAtArcLength(shiftedPath, localS));
+      } else {
+        ({ point: renderPos, angle: renderAngle } = pointAtArcLength(line.path, s));
       }
+
       const unitRiders = riders.slice(u * 6, u * 6 + 6);
-      if (u === 0) drawTrainBody(ctx, renderPos, angle, LOCO_LEN, 16, color, unitRiders);
-      else drawTrainBody(ctx, renderPos, angle, CAR_LEN, 13, color, unitRiders);
+      if (u === 0) drawTrainBody(ctx, renderPos, renderAngle, LOCO_LEN, 16, color, unitRiders);
+      else drawTrainBody(ctx, renderPos, renderAngle, CAR_LEN, 13, color, unitRiders);
     }
   }
 }
