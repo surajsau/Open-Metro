@@ -118,11 +118,16 @@ export class Interactions {
     return { lineId: line.id, stationId: st.id };
   }
 
-  private nearestLine(p: Vec): number | null {
+  // Nearest line path within DROP_R, or null. `excludeLineId` removes one line
+  // from the candidate set — used by the pickUpTrain drag to exclude the train's
+  // own source line (INP-19), so a *different* line can win even though the train
+  // starts sitting on its source. Inventory drops pass no exclusion.
+  private nearestLine(p: Vec, excludeLineId?: number): number | null {
     let best: number | null = null;
     let bestD = DROP_R;
     for (const line of this.store.state.lines) {
       if (line.path.length < 2) continue;
+      if (line.id === excludeLineId) continue;
       const d = nearestPointOnPolyline(line.path, p).dist;
       if (d <= bestD) {
         best = line.id;
@@ -250,7 +255,10 @@ export class Interactions {
 
   private movePickUp(p: Vec): void {
     const drag = this.drag as DragState & { mode: 'pickUpTrain' };
-    const lineId = this.nearestLine(p);
+    // Exclude the source line so only a DIFFERENT line can win within DROP_R
+    // (INP-19). Releasing where only the source line is in range resolves to
+    // no target and cancels harmlessly.
+    const lineId = this.nearestLine(p, drag.fromLineId);
     drag.target = lineId !== null ? { kind: 'line', lineId } : null;
   }
 

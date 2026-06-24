@@ -131,6 +131,46 @@ describe('GameStore', () => {
     expect(s.trains.filter((t) => t.lineId === lineA.id)).toHaveLength(0);
   });
 
+  it('moveTrain rejects a same-line drop as a no-op (GD-44 / INP-20 / TRN-15)', () => {
+    const store = new GameStore(63);
+    store.start();
+    const s = store.state;
+    s.stations.length = 0;
+    s.lines.length = 0;
+    s.trains.length = 0;
+    s.stations.push(makeStation(1, 0, 0, 'circle'), makeStation(2, 400, 0, 'circle'));
+    expect(store.commitCreate([1, 2], false)).toBe(true); // line A + auto train
+    const lineA = s.lines[0];
+    s.inventory.carriages = 5;
+    store.dropCarriage(lineA.id); // train on A now has 1 carriage
+    const train = s.trains.find((t) => t.lineId === lineA.id)!;
+    expect(train.carriages).toBe(1);
+
+    const totalLocos = () => s.inventory.locomotives + s.trains.length;
+    const totalCarriages = () => s.inventory.carriages + s.trains.reduce((n, t) => n + t.carriages, 0);
+    const locosBefore = totalLocos();
+    const carriagesBefore = totalCarriages();
+    const trainsBefore = [...s.trains];
+    const locoInvBefore = s.inventory.locomotives;
+    const carriageInvBefore = s.inventory.carriages;
+
+    store.setSpeed(0);
+    const moved = store.moveTrain(lineA.id, train.id, lineA.id, { x: 200, y: 0 });
+
+    // Rejected — nothing moves.
+    expect(moved).toBe(false);
+    expect(totalLocos()).toBe(locosBefore);
+    expect(totalCarriages()).toBe(carriagesBefore);
+    // The train is untouched: still on line A, still carrying its carriage, same object.
+    expect(s.trains).toEqual(trainsBefore);
+    expect(s.trains.find((t) => t.id === train.id)).toBe(train);
+    expect(train.lineId).toBe(lineA.id);
+    expect(train.carriages).toBe(1);
+    // Inventory unchanged — no transient refund/redeploy churn.
+    expect(s.inventory.locomotives).toBe(locoInvBefore);
+    expect(s.inventory.carriages).toBe(carriageInvBefore);
+  });
+
   it('moveTrain re-attaches carriages onto the target line', () => {
     const store = new GameStore(62);
     store.start();

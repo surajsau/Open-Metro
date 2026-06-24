@@ -230,6 +230,73 @@ describe('Interactions — deployed-train pick-up (INP-18/INP-19)', () => {
     expect(interactions.getDrag()).toBeNull();
   });
 
+  it('excludes the source line from drop candidates so a DIFFERENT line wins when both are in range (INP-19)', () => {
+    stubWindowListeners();
+    // Two lines that overlap near a common point so the source line is in range
+    // at the drop position — without the exclusion the source line would win.
+    const store = new GameStore(78);
+    store.start();
+    const s = store.state;
+    s.stations.length = 0;
+    s.lines.length = 0;
+    s.trains.length = 0;
+    // Line A (source): horizontal through y=100. Line B: horizontal through y=110,
+    // close enough that the drop point at (300,105) is within DROP_R of BOTH.
+    s.stations.push(
+      { id: 1, pos: { x: 100, y: 100 }, shape: 'circle', isInterchange: false, waiting: [], gauge: 0, spawnTimer: 999, bornAt: 0 },
+      { id: 2, pos: { x: 500, y: 100 }, shape: 'circle', isInterchange: false, waiting: [], gauge: 0, spawnTimer: 999, bornAt: 0 },
+      { id: 3, pos: { x: 100, y: 110 }, shape: 'square', isInterchange: false, waiting: [], gauge: 0, spawnTimer: 999, bornAt: 0 },
+      { id: 4, pos: { x: 500, y: 110 }, shape: 'square', isInterchange: false, waiting: [], gauge: 0, spawnTimer: 999, bornAt: 0 },
+    );
+    store.commitCreate([1, 2], false); // line A (source), train auto-deploys at (100,100)
+    store.commitCreate([3, 4], false); // line B
+    const lineA = s.lines[0];
+    const lineB = s.lines[1];
+    const train = s.trains.find((t) => t.lineId === lineA.id)!;
+    store.setSpeed(0);
+
+    const interactions = new Interactions(store, makeViewport);
+    (interactions as any).canvas = makeStubCanvas();
+    const moveSpy = vi.spyOn(store, 'moveTrain');
+
+    const down = { button: 0, clientX: 100, clientY: 100, pointerId: 1 } as unknown as PointerEvent;
+    (interactions as any).onPointerDown(down);
+    // Drop where BOTH lines are within range, but the SOURCE line A (y=100) is
+    // strictly closer than line B (y=110). Without the source-line exclusion the
+    // source line would win and moveTrain would be called with toLine === lineA.
+    const move = { clientX: 300, clientY: 103, pointerId: 1 } as unknown as PointerEvent;
+    (interactions as any).onPointerMove(move);
+    const up = { clientX: 300, clientY: 103, pointerId: 1 } as unknown as PointerEvent;
+    (interactions as any).onPointerUp(up);
+
+    // The different line (B) must win — source line A is excluded as a candidate.
+    expect(moveSpy).toHaveBeenCalled();
+    const [fromLine, , toLine] = moveSpy.mock.calls[0];
+    expect(fromLine).toBe(lineA.id);
+    expect(toLine).toBe(lineB.id);
+    void train;
+  });
+
+  it('cancels harmlessly when released where only the source line is in range — moveTrain not called (INP-19)', () => {
+    stubWindowListeners();
+    const { store, trainPos } = makeTwoLineStore();
+    store.setSpeed(0);
+
+    const interactions = new Interactions(store, makeViewport);
+    (interactions as any).canvas = makeStubCanvas();
+    const moveSpy = vi.spyOn(store, 'moveTrain');
+
+    const down = { button: 0, clientX: trainPos.x, clientY: trainPos.y, pointerId: 1 } as unknown as PointerEvent;
+    (interactions as any).onPointerDown(down);
+    // Release on a point sitting squarely on the SOURCE line (y=100, between 1 and 2)
+    // but far from line B (y=400). Only the source line is in range → no target.
+    const up = { clientX: 300, clientY: 100, pointerId: 1 } as unknown as PointerEvent;
+    (interactions as any).onPointerUp(up);
+
+    expect(moveSpy).not.toHaveBeenCalled();
+    expect(interactions.getDrag()).toBeNull();
+  });
+
   it('cancels harmlessly when released on empty canvas — moveTrain not called', () => {
     stubWindowListeners();
     const { store, trainPos } = makeTwoLineStore();

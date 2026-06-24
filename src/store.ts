@@ -322,6 +322,11 @@ export class GameStore {
   // train is indistinguishable from a new one. Pickup refunds first, so the
   // re-deploy always has stock; this whole op conserves hardware (TRN-14).
   moveTrain(fromLineId: number, trainId: number, toLineId: number, dropPos?: Vec): boolean {
+    // Same-line re-deploy is not a meaningful move (GD-44 / INP-20 / TRN-15):
+    // reject it as a no-op before any pickup so hardware and the train are left
+    // untouched and conservation (TRN-14) is preserved. No toast — the gesture
+    // simply does nothing.
+    if (toLineId === fromLineId) return false;
     const picked = pickUpTrain(this.state, fromLineId, trainId);
     if (!picked.ok) {
       this.addToast(picked.reason);
